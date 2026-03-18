@@ -27,6 +27,9 @@ import ViewClaim from "../pages/claims/ViewClaim";
 // Profile Page
 import Profile from "../pages/profile/Profile";
 
+// Reports
+import Reports from "../pages/reports/Reports";
+
 const AppRoutes = () => {
   return (
     <BrowserRouter>
@@ -64,6 +67,7 @@ const AppRoutes = () => {
 
           {/* Profile */}
           <Route path="profile" element={<Profile />} />
+          <Route path="reports" element={<Reports />} />
         </Route>
 
         {/* Catch All - Redirect to Login */}

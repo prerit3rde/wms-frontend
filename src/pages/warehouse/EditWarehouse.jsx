@@ -9,6 +9,7 @@ import Card from "../../components/global/Card";
 import Button from "../../components/global/Button";
 import Input from "../../components/global/Input";
 import toast from "react-hot-toast";
+import { ArrowLeft } from "lucide-react";
 
 const EditWarehouse = () => {
   const { id } = useParams();
@@ -16,7 +17,7 @@ const EditWarehouse = () => {
   const dispatch = useDispatch();
 
   const { currentWarehouse, loading, error } = useSelector(
-    (state) => state.warehouse
+    (state) => state.warehouse,
   );
 
   const [form, setForm] = useState({
@@ -26,8 +27,7 @@ const EditWarehouse = () => {
     warehouse_owner_name: "",
     warehouse_type: "",
     warehouse_no: "",
-    sr_no: "",
-    deposit_name: "",
+    gst_no: "",
     pan_card_holder: "",
     pan_card_number: "",
   });
@@ -45,8 +45,7 @@ const EditWarehouse = () => {
         warehouse_owner_name: currentWarehouse.warehouse_owner_name || "",
         warehouse_type: currentWarehouse.warehouse_type || "",
         warehouse_no: currentWarehouse.warehouse_no || "",
-        sr_no: currentWarehouse.sr_no || "",
-        deposit_name: currentWarehouse.deposit_name || "",
+        gst_no: currentWarehouse.gst_no || "",
         pan_card_holder: currentWarehouse.pan_card_holder || "",
         pan_card_number: currentWarehouse.pan_card_number || "",
       });
@@ -71,8 +70,12 @@ const EditWarehouse = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">Edit Warehouse</h1>
-        <Button variant="outline" onClick={() => navigate(-1)}>
-          ← Go Back
+        <Button
+          className="flex gap-2"
+          variant="outline"
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeft size={16} /> Go Back
         </Button>
       </div>
 
@@ -88,23 +91,89 @@ const EditWarehouse = () => {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input name="district_name" value={form.district_name} onChange={handleChange} placeholder="District Name" />
-              <Input name="branch_name" value={form.branch_name} onChange={handleChange} placeholder="Branch Name" />
-              <Input name="warehouse_name" value={form.warehouse_name} onChange={handleChange} placeholder="Warehouse Name" />
-              <Input name="warehouse_owner_name" value={form.warehouse_owner_name} onChange={handleChange} placeholder="Warehouse Owner Name" />
-              <Input name="warehouse_type" value={form.warehouse_type} onChange={handleChange} placeholder="Warehouse Type" />
-              <Input name="warehouse_no" value={form.warehouse_no} onChange={handleChange} placeholder="Warehouse No" />
-              <Input name="sr_no" value={form.sr_no} onChange={handleChange} placeholder="SR No" />
-              <Input name="deposit_name" value={form.deposit_name} onChange={handleChange} placeholder="Deposit Name" />
-              <Input name="pan_card_holder" value={form.pan_card_holder} onChange={handleChange} placeholder="PAN Card Holder" />
-              <Input name="pan_card_number" value={form.pan_card_number} onChange={handleChange} placeholder="PAN Card Number" />
+              <FormField label="District">
+                <Input
+                  name="district_name"
+                  value={form.district_name}
+                  onChange={handleChange}
+                  placeholder="District Name"
+                />
+              </FormField>
+              <FormField label="Branch">
+                <Input
+                  name="branch_name"
+                  value={form.branch_name}
+                  onChange={handleChange}
+                  placeholder="Branch Name"
+                />
+              </FormField>
+              <FormField label="Warehouse Name">
+                <Input
+                  name="warehouse_name"
+                  value={form.warehouse_name}
+                  onChange={handleChange}
+                  placeholder="Warehouse Name"
+                />
+              </FormField>
+              <FormField label="Warehouse Owner Name">
+                <Input
+                  name="warehouse_owner_name"
+                  value={form.warehouse_owner_name}
+                  onChange={handleChange}
+                  placeholder="Warehouse Owner Name"
+                />
+              </FormField>
+              <FormField label="Warehouse Type">
+                <Input
+                  name="warehouse_type"
+                  value={form.warehouse_type}
+                  onChange={handleChange}
+                  placeholder="Warehouse Type"
+                />
+              </FormField>
+              <FormField label="Warehouse No">
+                <Input
+                  name="warehouse_no"
+                  value={form.warehouse_no}
+                  onChange={handleChange}
+                  placeholder="Warehouse No"
+                />
+              </FormField>
+              <FormField label="GST No">
+                <Input
+                  name="gst_no"
+                  value={form.gst_no}
+                  onChange={handleChange}
+                  placeholder="GST No"
+                />
+              </FormField>
+              <FormField label="PAN Card Holder">
+                <Input
+                  name="pan_card_holder"
+                  value={form.pan_card_holder}
+                  onChange={handleChange}
+                  placeholder="PAN Card Holder"
+                />
+              </FormField>
+              <FormField label="PAN Card Number">
+                <Input
+                  name="pan_card_number"
+                  value={form.pan_card_number}
+                  onChange={handleChange}
+                  placeholder="PAN Card Number"
+                />
+              </FormField>
             </div>
 
             <div className="flex gap-2 pt-4">
               <Button type="submit" disabled={loading}>
                 {loading ? "Updating..." : "Update Warehouse"}
               </Button>
-              <Button variant="secondary" type="button" onClick={() => navigate(-1)}>
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => navigate(-1)}
+              >
                 Cancel
               </Button>
             </div>
@@ -114,5 +183,12 @@ const EditWarehouse = () => {
     </div>
   );
 };
+
+const FormField = ({ label, children }) => (
+  <div className="flex flex-col">
+    <label className="text-sm font-medium mb-1 text-gray-700">{label}</label>
+    {children}
+  </div>
+);
 
 export default EditWarehouse;

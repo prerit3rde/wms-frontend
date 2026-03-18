@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Card from "../../components/global/Card";
 import Button from "../../components/global/Button";
 import Input from "../../components/global/Input";
+import { ArrowLeft } from "lucide-react";
 
 const AddWarehouse = () => {
   const navigate = useNavigate();
@@ -18,8 +19,7 @@ const AddWarehouse = () => {
     warehouse_owner_name: "",
     warehouse_type: "",
     warehouse_no: "",
-    sr_no: "",
-    deposit_name: "",
+    gst_no: "",
     pan_card_holder: "",
     pan_card_number: "",
   });
@@ -38,8 +38,12 @@ const AddWarehouse = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">Add Warehouse</h1>
-        <Button variant="outline" onClick={() => navigate(-1)}>
-          ← Go Back
+        <Button
+          className="flex gap-1"
+          variant="outline"
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeft size={16} /> Go Back
         </Button>
       </div>
 
@@ -51,7 +55,6 @@ const AddWarehouse = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
-
           {/* Basic Information */}
           <div>
             <h2 className="text-lg font-semibold mb-4 border-b pb-2">
@@ -59,14 +62,62 @@ const AddWarehouse = () => {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input name="district_name" placeholder="District Name" value={form.district_name} onChange={handleChange} />
-              <Input name="branch_name" placeholder="Branch Name" value={form.branch_name} onChange={handleChange} />
-              <Input name="warehouse_name" placeholder="Warehouse Name" value={form.warehouse_name} onChange={handleChange} />
-              <Input name="warehouse_owner_name" placeholder="Warehouse Owner Name" value={form.warehouse_owner_name} onChange={handleChange} />
-              <Input name="warehouse_type" placeholder="Warehouse Type" value={form.warehouse_type} onChange={handleChange} />
-              <Input name="warehouse_no" placeholder="Warehouse No" value={form.warehouse_no} onChange={handleChange} />
-              <Input name="sr_no" placeholder="SR No" value={form.sr_no} onChange={handleChange} />
-              <Input name="deposit_name" placeholder="Deposit Name" value={form.deposit_name} onChange={handleChange} />
+              <FormField label="District">
+                <Input
+                  name="district_name"
+                  placeholder="District Name"
+                  value={form.district_name}
+                  onChange={handleChange}
+                />
+              </FormField>
+              <FormField label="Branch">
+                <Input
+                  name="branch_name"
+                  placeholder="Branch Name"
+                  value={form.branch_name}
+                  onChange={handleChange}
+                />
+              </FormField>
+              <FormField label="Warehouse Name">
+                <Input
+                  name="warehouse_name"
+                  placeholder="Warehouse Name"
+                  value={form.warehouse_name}
+                  onChange={handleChange}
+                />
+              </FormField>
+              <FormField label="Warehouse Owner Name">
+                <Input
+                  name="warehouse_owner_name"
+                  placeholder="Warehouse Owner Name"
+                  value={form.warehouse_owner_name}
+                  onChange={handleChange}
+                />
+              </FormField>
+              <FormField label="Warehouse Type">
+                <Input
+                  name="warehouse_type"
+                  placeholder="Warehouse Type"
+                  value={form.warehouse_type}
+                  onChange={handleChange}
+                />
+              </FormField>
+              <FormField label="Warehouse No">
+                <Input
+                  name="warehouse_no"
+                  placeholder="Warehouse No"
+                  value={form.warehouse_no}
+                  onChange={handleChange}
+                />
+              </FormField>
+              <FormField label="GST No">
+                <Input
+                  name="gst_no"
+                  placeholder="GST No"
+                  value={form.gst_no}
+                  onChange={handleChange}
+                />
+              </FormField>
             </div>
           </div>
 
@@ -77,8 +128,22 @@ const AddWarehouse = () => {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input name="pan_card_holder" placeholder="PAN Card Holder" value={form.pan_card_holder} onChange={handleChange} />
-              <Input name="pan_card_number" placeholder="PAN Card Number" value={form.pan_card_number} onChange={handleChange} />
+              <FormField label="PAN Card Holder">
+                <Input
+                  name="pan_card_holder"
+                  placeholder="PAN Card Holder"
+                  value={form.pan_card_holder}
+                  onChange={handleChange}
+                />
+              </FormField>
+              <FormField label="PAN Card Number">
+                <Input
+                  name="pan_card_number"
+                  placeholder="PAN Card Number"
+                  value={form.pan_card_number}
+                  onChange={handleChange}
+                />
+              </FormField>
             </div>
           </div>
 
@@ -86,15 +151,25 @@ const AddWarehouse = () => {
             <Button type="submit" disabled={loading}>
               {loading ? "Creating..." : "Save Warehouse"}
             </Button>
-            <Button type="button" variant="secondary" onClick={() => navigate(-1)}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => navigate(-1)}
+            >
               Cancel
             </Button>
           </div>
-
         </form>
       </Card>
     </div>
   );
 };
+
+const FormField = ({ label, children }) => (
+  <div className="flex flex-col">
+    <label className="text-sm font-medium mb-1 text-gray-700">{label}</label>
+    {children}
+  </div>
+);
 
 export default AddWarehouse;

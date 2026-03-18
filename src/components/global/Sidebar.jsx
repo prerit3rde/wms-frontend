@@ -4,8 +4,8 @@ import {
   Package,
   FileText,
   BarChart3,
-  Settings,
   ChevronDown,
+  FileTextIcon,
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -42,9 +42,9 @@ const Sidebar = () => {
       ],
     },
     {
-      label: "Settings",
-      icon: <Settings size={20} />,
-      path: "/admin/settings",
+      label: "Reports",
+      icon: <FileTextIcon size={20} />,
+      path: "/admin/reports",
     },
   ];
 
@@ -101,9 +101,7 @@ const Sidebar = () => {
               <Link
                 to={item.path}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  isActive(item.path)
-                    ? "bg-blue-600"
-                    : "hover:bg-gray-800"
+                  isActive(item.path) ? "bg-blue-600" : "hover:bg-gray-800"
                 }`}
               >
                 {item.icon}

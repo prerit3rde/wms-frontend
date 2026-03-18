@@ -144,7 +144,6 @@ const WarehouseList = () => {
      TABLE COLUMNS
   =============================== */
   const columns = [
-    { key: "id", label: "ID" },
     { key: "district_name", label: "District" },
     { key: "branch_name", label: "Branch" },
     { key: "warehouse_name", label: "Warehouse Name" },

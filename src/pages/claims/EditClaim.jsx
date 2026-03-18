@@ -119,7 +119,7 @@ const EditClaim = () => {
         currentClaim.status === "Approved" ||
         currentClaim.status === "Rejected"
       ) {
-        setCurrentStep(5); // Jump to Remarks
+        setCurrentStep(6); // Jump to Remarks
       }
     }
   }, [currentClaim]);
@@ -202,7 +202,7 @@ const EditClaim = () => {
       <div className="relative mb-10">
         <div className="flex justify-between relative z-10">
           {steps.map((_, i) => (
-            <div key={i} className="flex-1 flex justify-center">
+            <div key={i}>
               <div
                 className={`w-10 h-10 flex items-center justify-center rounded-full border-2 font-semibold ${
                   i <= currentStep
@@ -220,7 +220,7 @@ const EditClaim = () => {
         <div
           className="absolute top-5 left-5 h-1 bg-blue-600 transition-all"
           style={{
-            width: `calc(${(currentStep / (steps.length - 1)) * 100}% - 40px)`,
+            width: `calc(${(currentStep / (steps.length - 1)) * 100}% - 20px)`,
           }}
         />
       </div>
@@ -693,7 +693,6 @@ const EditClaim = () => {
               className="w-full border rounded-lg p-3"
               rows={4}
               placeholder="Remarks"
-              disabled={isLocked}
             />
           </FormField>
         )}

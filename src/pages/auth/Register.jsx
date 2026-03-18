@@ -45,7 +45,8 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+    <div className="min-h-screen flex items-center justify-center flex-col gap-10 bg-gray-100 px-4">
+      <h1 className="font-semibold text-3xl text-center leading-10">Madhya Pradesh Warehousing<br/>And Logistics Corporation</h1>
       <Card className="w-full max-w-md">
         <h2 className="text-2xl font-bold text-center mb-6">Register</h2>
 

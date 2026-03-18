@@ -55,12 +55,13 @@ const ViewWarehouse = () => {
       <div className="bg-white rounded-xl border border-gray-200 divide-y">
 
         <Section>
+          <Field label="District" value={currentWarehouse.district_name} />
+          <Field label="Branch" value={currentWarehouse.branch_name} />
           <Field label="Warehouse Owner" value={currentWarehouse.warehouse_owner_name} />
           <Field label="Warehouse Type" value={currentWarehouse.warehouse_type} />
           <Field label="Warehouse No" value={currentWarehouse.warehouse_no} />
-          <Field label="SR No" value={currentWarehouse.sr_no} />
+          <Field label="GST No" value={currentWarehouse.gst_no} />
           <Field label="Warehouse Name" value={currentWarehouse.warehouse_name} />
-          <Field label="Deposit Name" value={currentWarehouse.deposit_name} />
         </Section>
 
         <Section>

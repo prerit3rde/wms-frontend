@@ -13,8 +13,8 @@ const steps = [
   "Billing Details",
   "Scientific Capacity",
   "Deductions",
-  "Preview",
   "Payment",
+  "Preview",
   "Remarks",
 ];
 
@@ -262,7 +262,7 @@ const AddClaim = () => {
       <div className="relative mb-10">
         <div className="flex justify-between relative z-10">
           {steps.map((_, i) => (
-            <div key={i} className="flex-1 flex justify-center">
+            <div key={i}>
               <div
                 className={`w-10 h-10 flex items-center justify-center rounded-full border-2 font-semibold ${
                   i <= currentStep
@@ -280,7 +280,7 @@ const AddClaim = () => {
         <div
           className="absolute top-5 left-5 h-1 bg-blue-600 transition-all"
           style={{
-            width: `calc(${(currentStep / (steps.length - 1)) * 100}% - 40px)`,
+            width: `calc(${(currentStep / (steps.length - 1)) * 100}% - 20px)`,
           }}
         />
       </div>
@@ -294,7 +294,7 @@ const AddClaim = () => {
           <div className="h-px bg-gray-300 mt-2"></div>
         </div>
 
-        {/* ================= STEP 1 ================= */}
+        {/* ================= STEP 1 Warehouse Details ================= */}
         {currentStep === 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* DISTRICT */}
@@ -383,16 +383,16 @@ const AddClaim = () => {
             </FormField>
 
             <FormField label="Warehouse No">
-              <Input value={formData.warehouse_no} readOnly />
+              <Input value={formData.warehouse_no} readOnly placeholder="Warehouse No"/>
             </FormField>
 
             <FormField label="PAN Number">
-              <Input value={formData.pan_card_number} readOnly />
+              <Input value={formData.pan_card_number} readOnly placeholder="PAN Number" />
             </FormField>
           </div>
         )}
 
-        {/* ================= STEP 2 ================= */}
+        {/* ================= STEP 2 Bill Details ================= */}
         {currentStep === 1 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="Rent Bill Number">
@@ -400,6 +400,7 @@ const AddClaim = () => {
                 name="rent_bill_number"
                 value={formData.rent_bill_number}
                 onChange={handleChange}
+                placeholder="Rent Bill Number"
               />
             </FormField>
 
@@ -408,6 +409,7 @@ const AddClaim = () => {
                 name="bill_type"
                 value={formData.bill_type}
                 onChange={handleChange}
+                placeholder="Bill Type"
               />
             </FormField>
 
@@ -416,6 +418,7 @@ const AddClaim = () => {
                 name="month"
                 value={formData.month}
                 onChange={handleChange}
+                placeholder="Month"
               />
             </FormField>
 
@@ -424,6 +427,7 @@ const AddClaim = () => {
                 name="financial_year"
                 value={formData.financial_year}
                 onChange={handleChange}
+                placeholder="Financial Year"
               />
             </FormField>
 
@@ -433,6 +437,7 @@ const AddClaim = () => {
                 name="from_date"
                 value={formData.from_date}
                 onChange={handleChange}
+                placeholder="From Date"
               />
             </FormField>
 
@@ -442,6 +447,7 @@ const AddClaim = () => {
                 name="to_date"
                 value={formData.to_date}
                 onChange={handleChange}
+                placeholder="To Date"
               />
             </FormField>
 
@@ -450,6 +456,7 @@ const AddClaim = () => {
                 name="commodity"
                 value={formData.commodity}
                 onChange={handleChange}
+                placeholder="Commodity"
               />
             </FormField>
 
@@ -459,6 +466,7 @@ const AddClaim = () => {
                 name="rate"
                 value={formData.rate}
                 onChange={handleChange}
+                placeholder="Rate"
               />
             </FormField>
 
@@ -468,6 +476,7 @@ const AddClaim = () => {
                 name="rent_bill_amount"
                 value={formData.rent_bill_amount}
                 onChange={handleChange}
+                placeholder="Rent Bill Amount"
               />
             </FormField>
 
@@ -477,6 +486,7 @@ const AddClaim = () => {
                 name="total_jv_amount"
                 value={formData.total_jv_amount}
                 onChange={handleChange}
+                placeholder="Total JV Amount"
               />
             </FormField>
 
@@ -486,6 +496,7 @@ const AddClaim = () => {
                 name="actual_passed_amount"
                 value={formData.actual_passed_amount}
                 onChange={handleChange}
+                placeholder="Actual Passed Amount"
               />
             </FormField>
 
@@ -495,12 +506,13 @@ const AddClaim = () => {
                 name="total_deduction_amount"
                 value={formData.total_deduction_amount}
                 onChange={handleChange}
+                placeholder="Total Deduction Amount"
               />
             </FormField>
           </div>
         )}
 
-        {/* ================= STEP 3 ================= */}
+        {/* ================= STEP 3 Scientific Capacity ================= */}
         {currentStep === 2 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="Scientific Capacity">
@@ -509,6 +521,7 @@ const AddClaim = () => {
                 name="scientific_capacity"
                 value={formData.scientific_capacity}
                 onChange={handleChange}
+                placeholder="Scientific Capacity"
               />
             </FormField>
 
@@ -518,6 +531,7 @@ const AddClaim = () => {
                 name="number_of_days"
                 value={formData.number_of_days}
                 onChange={handleChange}
+                placeholder="Number of Days"
               />
             </FormField>
 
@@ -527,6 +541,7 @@ const AddClaim = () => {
                 name="per_day_rate"
                 value={formData.per_day_rate}
                 onChange={handleChange}
+                placeholder="Per Day Rate"
               />
             </FormField>
 
@@ -536,13 +551,13 @@ const AddClaim = () => {
                 name="rent_amount_on_scientific_capacity"
                 value={formData.rent_amount_on_scientific_capacity}
                 onChange={handleChange}
+                placeholder="Rent Amount On Scientific Capacity"
               />
             </FormField>
           </div>
         )}
 
-        {/* ================= STEP 4 ================= */}
-        {/* ================= STEP 4 ================= */}
+        {/* ================= STEP 4 Deductions ================= */}
         {currentStep === 3 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="TDS">
@@ -697,34 +712,8 @@ const AddClaim = () => {
           </div>
         )}
 
-        {/* ================= STEP 5 ================= */}
+        {/* ================= STEP 5 Payments ================= */}
         {currentStep === 4 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField label="Rent Bill Amount">
-              <Input value={formData.rent_bill_amount} readOnly />
-            </FormField>
-
-            <FormField label="Total Deduction Amount">
-              <Input value={formData.total_deduction_amount} readOnly />
-            </FormField>
-
-            <FormField label="TDS">
-              <Input value={formData.tds} readOnly />
-            </FormField>
-
-            <FormField label="Net Amount Payable">
-              <Input
-                type="number"
-                name="net_amount_payable"
-                value={formData.net_amount_payable}
-                onChange={handleChange}
-              />
-            </FormField>
-          </div>
-        )}
-
-        {/* ================= STEP 6 PAYMENT ================= */}
-        {currentStep === 5 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="Payment By">
               <Input
@@ -756,7 +745,34 @@ const AddClaim = () => {
           </div>
         )}
 
-        {/* ================= STEP 6 ================= */}
+        {/* ================= STEP 6 Preview ================= */}
+        {currentStep === 5 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField label="Rent Bill Amount">
+              <Input value={formData.rent_bill_amount} readOnly placeholder="Rent Bill Amount"/>
+            </FormField>
+
+            <FormField label="Total Deduction Amount">
+              <Input value={formData.total_deduction_amount} readOnly placeholder="Total Deduction Amount"/>
+            </FormField>
+
+            <FormField label="TDS">
+              <Input value={formData.tds} readOnly placeholder="TDS"/>
+            </FormField>
+
+            <FormField label="Net Amount Payable">
+              <Input
+                type="number"
+                name="net_amount_payable"
+                value={formData.net_amount_payable}
+                onChange={handleChange}
+                placeholder="Net Amount Payable"
+              />
+            </FormField>
+          </div>
+        )}
+
+        {/* ================= STEP 7 Remarks ================= */}
         {currentStep === 6 && (
           <FormField label="Remarks">
             <textarea

@@ -70,7 +70,7 @@ const Header = ({ onMenuToggle }) => {
           </button>
 
           <h1 className="text-xl font-bold text-gray-800">
-            WMS
+            Madhya Pradesh Warehousing And Logistics Corporation
           </h1>
         </div>
 
