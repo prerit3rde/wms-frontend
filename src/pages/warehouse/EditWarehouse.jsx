@@ -8,6 +8,7 @@ import {
 import Card from "../../components/global/Card";
 import Button from "../../components/global/Button";
 import Input from "../../components/global/Input";
+import axios from "../../services/axios";
 import toast from "react-hot-toast";
 import { ArrowLeft } from "lucide-react";
 
@@ -20,83 +21,116 @@ const EditWarehouse = () => {
     (state) => state.warehouse,
   );
 
+  const [types, setTypes] = useState([]);
+
   const [form, setForm] = useState({
     district_name: "",
     branch_name: "",
     warehouse_name: "",
     warehouse_owner_name: "",
-    warehouse_type: "",
+    warehouse_type_id: "",
     warehouse_no: "",
     gst_no: "",
+
+    scheme: "",
+    scheme_rate_amount: "",
+    actual_storage_capacity: "",
+    approved_storage_capacity: "",
+
+    bank_solvency_certificate_amount: "",
+    bank_solvency_deduction_by_bill: "",
+    emi_deduction_by_bill: "",
+
+    is_affidavit: true,
+
     pan_card_holder: "",
     pan_card_number: "",
   });
 
+  /* ================= FETCH ================= */
   useEffect(() => {
     dispatch(fetchWarehouseById(id));
+
+    axios.get("/warehouse-types").then((res) => {
+      setTypes(res.data.data || []);
+    });
   }, [dispatch, id]);
 
   useEffect(() => {
     if (currentWarehouse) {
       setForm({
-        district_name: currentWarehouse.district_name || "",
-        branch_name: currentWarehouse.branch_name || "",
-        warehouse_name: currentWarehouse.warehouse_name || "",
-        warehouse_owner_name: currentWarehouse.warehouse_owner_name || "",
-        warehouse_type: currentWarehouse.warehouse_type || "",
-        warehouse_no: currentWarehouse.warehouse_no || "",
-        gst_no: currentWarehouse.gst_no || "",
-        pan_card_holder: currentWarehouse.pan_card_holder || "",
-        pan_card_number: currentWarehouse.pan_card_number || "",
+        ...currentWarehouse,
+        is_affidavit: currentWarehouse.bank_solvency_affidavit_amount > 0,
       });
     }
   }, [currentWarehouse]);
 
+  /* ================= AUTO CALC ================= */
+  const affidavitAmount = form.approved_storage_capacity * 50 || 0;
+
+  const totalEMI =
+    (form.actual_storage_capacity * form.scheme_rate_amount) / 2 || 0;
+
+  const solvencyBase = form.is_affidavit
+    ? affidavitAmount
+    : form.bank_solvency_certificate_amount || 0;
+
+  const solvencyBalance =
+    solvencyBase - (form.bank_solvency_deduction_by_bill || 0);
+
+  const emiBalance = totalEMI - (form.emi_deduction_by_bill || 0);
+
+  /* ================= HANDLER ================= */
   const handleChange = (e) => {
+    const { name, value } = e.target;
+
     setForm({
       ...form,
-      [e.target.name]: e.target.value,
+      [name]: name === "is_affidavit" ? value === "true" : value,
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const result = await dispatch(updateWarehouse({ id, data: form }));
-    if (result.payload) navigate("/admin/warehouses");
-    toast.success("Warehouse updated successfully");
+
+    const payload = {
+      ...form,
+      bank_solvency_certificate_amount: form.is_affidavit
+        ? 0
+        : form.bank_solvency_certificate_amount,
+    };
+
+    const result = await dispatch(updateWarehouse({ id, data: payload }));
+
+    if (result.payload) {
+      toast.success("Warehouse updated successfully");
+      navigate("/admin/warehouses");
+    }
   };
+
+  if (loading && !currentWarehouse) {
+    return <div className="text-center py-10">Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-800">Edit Warehouse</h1>
-        <Button
-          className="flex gap-2"
-          variant="outline"
-          onClick={() => navigate(-1)}
-        >
+      <div className="flex justify-between">
+        <h1 className="text-3xl font-bold">Edit Warehouse</h1>
+        <Button className="gap-2" variant="outline" onClick={() => navigate(-1)}>
           <ArrowLeft size={16} /> Go Back
         </Button>
       </div>
 
       <Card>
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
-            {typeof error === "string" ? error : "Failed to load warehouse"}
-          </div>
-        )}
-
-        {loading && !currentWarehouse ? (
-          <div className="text-center py-8 text-gray-500">Loading...</div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* BASIC */}
+          <Section title="Basic Information">
+            <Grid>
               <FormField label="District">
                 <Input
                   name="district_name"
                   value={form.district_name}
                   onChange={handleChange}
-                  placeholder="District Name"
                 />
               </FormField>
               <FormField label="Branch">
@@ -104,7 +138,6 @@ const EditWarehouse = () => {
                   name="branch_name"
                   value={form.branch_name}
                   onChange={handleChange}
-                  placeholder="Branch Name"
                 />
               </FormField>
               <FormField label="Warehouse Name">
@@ -112,31 +145,40 @@ const EditWarehouse = () => {
                   name="warehouse_name"
                   value={form.warehouse_name}
                   onChange={handleChange}
-                  placeholder="Warehouse Name"
                 />
               </FormField>
-              <FormField label="Warehouse Owner Name">
+              <FormField label="Warehouse Owner">
                 <Input
                   name="warehouse_owner_name"
                   value={form.warehouse_owner_name}
                   onChange={handleChange}
-                  placeholder="Warehouse Owner Name"
                 />
               </FormField>
+
               <FormField label="Warehouse Type">
-                <Input
-                  name="warehouse_type"
-                  value={form.warehouse_type}
+                <select
+                  name="warehouse_type_id"
+                  value={form.warehouse_type_id}
                   onChange={handleChange}
-                  placeholder="Warehouse Type"
-                />
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg
+          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+          disabled:bg-gray-100 disabled:cursor-not-allowed
+          transition-all duration-200"
+                >
+                  <option value="">Select Type</option>
+                  {types.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
               </FormField>
+
               <FormField label="Warehouse No">
                 <Input
                   name="warehouse_no"
                   value={form.warehouse_no}
                   onChange={handleChange}
-                  placeholder="Warehouse No"
                 />
               </FormField>
               <FormField label="GST No">
@@ -144,15 +186,124 @@ const EditWarehouse = () => {
                   name="gst_no"
                   value={form.gst_no}
                   onChange={handleChange}
-                  placeholder="GST No"
                 />
               </FormField>
+            </Grid>
+          </Section>
+
+          {/* SCHEME */}
+          <Section title="Scheme & Capacity">
+            <Grid>
+              <FormField label="Scheme">
+                <Input
+                  name="scheme"
+                  value={form.scheme}
+                  onChange={handleChange}
+                />
+              </FormField>
+              <FormField label="Scheme Rate Amount">
+                <Input
+                  type="number"
+                  name="scheme_rate_amount"
+                  value={form.scheme_rate_amount}
+                  onChange={handleChange}
+                />
+              </FormField>
+              <FormField label="Actual Storage Capacity">
+                <Input
+                  type="number"
+                  name="actual_storage_capacity"
+                  value={form.actual_storage_capacity}
+                  onChange={handleChange}
+                />
+              </FormField>
+              <FormField label="Approved Storage Capacity">
+                <Input
+                  type="number"
+                  name="approved_storage_capacity"
+                  value={form.approved_storage_capacity}
+                  onChange={handleChange}
+                />
+              </FormField>
+            </Grid>
+          </Section>
+
+          {/* SOLVENCY */}
+          <Section title="Bank Solvency">
+            <Grid>
+              <FormField label="Affidavit/Certificate">
+                <select
+                  name="is_affidavit"
+                  value={form.is_affidavit}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg
+          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+          disabled:bg-gray-100 disabled:cursor-not-allowed
+          transition-all duration-200"
+                >
+                  <option value="true">Affidavit</option>
+                  <option value="false">Certificate</option>
+                </select>
+              </FormField>
+
+              {form.is_affidavit ? (
+                <FormField label="Affidavit Amount">
+                  <Input value={affidavitAmount} readOnly />
+                </FormField>
+              ) : (
+                <FormField label="Certificate Amount">
+                  <Input
+                    type="number"
+                    name="bank_solvency_certificate_amount"
+                    value={form.bank_solvency_certificate_amount}
+                    onChange={handleChange}
+                  />
+                </FormField>
+              )}
+
+              <FormField label="Bank Solvency Deduction by Bill">
+                <Input
+                  type="number"
+                  name="bank_solvency_deduction_by_bill"
+                  value={form.bank_solvency_deduction_by_bill}
+                  onChange={handleChange}
+                />
+              </FormField>
+
+              <FormField label="Balance Amount Bank Solvancy">
+                <Input value={solvencyBalance} readOnly />
+              </FormField>
+            </Grid>
+          </Section>
+
+          {/* EMI */}
+          <Section title="EMI">
+            <Grid>
+              <FormField label="Total EMI">
+                <Input value={totalEMI} readOnly />
+              </FormField>
+              <FormField label="EMI Deduction by Bill">
+                <Input
+                  type="number"
+                  name="emi_deduction_by_bill"
+                  value={form.emi_deduction_by_bill}
+                  onChange={handleChange}
+                />
+              </FormField>
+              <FormField label="EMI Balance">
+                <Input value={emiBalance} readOnly />
+              </FormField>
+            </Grid>
+          </Section>
+
+          {/* PAN */}
+          <Section title="PAN Details">
+            <Grid>
               <FormField label="PAN Card Holder">
                 <Input
                   name="pan_card_holder"
                   value={form.pan_card_holder}
                   onChange={handleChange}
-                  placeholder="PAN Card Holder"
                 />
               </FormField>
               <FormField label="PAN Card Number">
@@ -160,33 +311,41 @@ const EditWarehouse = () => {
                   name="pan_card_number"
                   value={form.pan_card_number}
                   onChange={handleChange}
-                  placeholder="PAN Card Number"
                 />
               </FormField>
-            </div>
-
-            <div className="flex gap-2 pt-4">
-              <Button type="submit" disabled={loading}>
-                {loading ? "Updating..." : "Update Warehouse"}
-              </Button>
-              <Button
-                variant="secondary"
-                type="button"
-                onClick={() => navigate(-1)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
-        )}
+            </Grid>
+          </Section>
+          <div className="flex gap-3 mt-10">
+            <Button type="submit">{loading ? "Updating..." : "Update Warehouse"}</Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                navigate(-1);
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
       </Card>
     </div>
   );
 };
 
+const Section = ({ title, children }) => (
+  <div>
+    <h2 className="font-semibold mb-4 border-b pb-2">{title}</h2>
+    {children}
+  </div>
+);
+
+const Grid = ({ children }) => (
+  <div className="grid md:grid-cols-3 gap-4">{children}</div>
+);
+
 const FormField = ({ label, children }) => (
   <div className="flex flex-col">
-    <label className="text-sm font-medium mb-1 text-gray-700">{label}</label>
+    <label className="text-sm font-medium mb-2 text-gray-700">{label}</label>
     {children}
   </div>
 );

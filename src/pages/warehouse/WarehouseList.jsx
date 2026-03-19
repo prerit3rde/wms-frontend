@@ -144,6 +144,7 @@ const WarehouseList = () => {
      TABLE COLUMNS
   =============================== */
   const columns = [
+    { key: "id", label: "ID" },
     { key: "district_name", label: "District" },
     { key: "branch_name", label: "Branch" },
     { key: "warehouse_name", label: "Warehouse Name" },
@@ -179,7 +180,7 @@ const WarehouseList = () => {
                 toast.success("Warehouse deleted successfully");
               }
             }}
-            className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition"
+            className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition cursor-pointer"
           >
             <Trash2 size={16} />
           </button>
@@ -330,19 +331,10 @@ const WarehouseList = () => {
               }`}
             >
               <option value="">Select Type</option>
-              {[
-                ...new Set(
-                  filterOptions.warehouseNames
-                    .filter(
-                      (w) =>
-                        w.district_name === district &&
-                        w.branch_name === branch,
-                    )
-                    .map((w) => w.warehouse_type),
-                ),
-              ].map((type) => (
-                <option key={type} value={type}>
-                  {type}
+
+              {filterOptions.warehouseTypes.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
                 </option>
               ))}
             </select>
@@ -360,12 +352,13 @@ const WarehouseList = () => {
               }`}
             >
               <option value="">Select Warehouse</option>
+
               {filterOptions.warehouseNames
                 .filter(
                   (w) =>
                     w.district_name === district &&
                     w.branch_name === branch &&
-                    w.warehouse_type === warehouseType,
+                    w.warehouse_type_id == warehouseType, // ✅ FIX HERE
                 )
                 .map((w) => (
                   <option key={w.warehouse_name} value={w.warehouse_name}>

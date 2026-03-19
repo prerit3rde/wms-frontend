@@ -29,16 +29,17 @@ const Sidebar = () => {
       label: "Warehouses",
       icon: <Package size={20} />,
       submenu: [
-        { label: "List", path: "/admin/warehouses" },
-        { label: "Add New", path: "/admin/warehouses/add" },
+        { label: "Warehouse List", path: "/admin/warehouses" },
+        { label: "Add New Warehouse", path: "/admin/warehouses/add" },
+        { label: "Add Warehouse Type", path: "/admin/warehouses/types" },
       ],
     },
     {
       label: "Claims",
       icon: <FileText size={20} />,
       submenu: [
-        { label: "List", path: "/admin/claims" },
-        { label: "Add New", path: "/admin/claims/add" },
+        { label: "Claims List", path: "/admin/claims" },
+        { label: "Add New Claim", path: "/admin/claims/add" },
       ],
     },
     {

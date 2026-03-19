@@ -17,6 +17,7 @@ import WarehouseList from "../pages/warehouse/WarehouseList";
 import AddWarehouse from "../pages/warehouse/AddWarehouse";
 import EditWarehouse from "../pages/warehouse/EditWarehouse";
 import ViewWarehouse from "../pages/warehouse/ViewWarehouse";
+import WarehouseType from "../pages/warehouse/AddWarehouseType";
 
 // Claims Pages
 import ClaimList from "../pages/claims/ClaimList";
@@ -55,6 +56,7 @@ const AppRoutes = () => {
 
           {/* Warehouses */}
           <Route path="warehouses" element={<WarehouseList />} />
+          <Route path="warehouses/types" element={<WarehouseType />} />
           <Route path="warehouses/add" element={<AddWarehouse />} />
           <Route path="warehouses/view/:id" element={<ViewWarehouse />} />
           <Route path="warehouses/edit/:id" element={<EditWarehouse />} />

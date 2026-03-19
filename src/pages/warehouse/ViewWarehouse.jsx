@@ -11,7 +11,7 @@ const ViewWarehouse = () => {
   const dispatch = useDispatch();
 
   const { currentWarehouse, loading, error } = useSelector(
-    (state) => state.warehouse
+    (state) => state.warehouse,
   );
 
   useEffect(() => {
@@ -19,70 +19,117 @@ const ViewWarehouse = () => {
   }, [dispatch, id]);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-gray-500">Loading...</div>;
+    return <div className="text-center py-10">Loading...</div>;
   }
 
   if (error) {
-    return <div className="p-4 text-red-600 bg-red-50 rounded-lg">Failed to load warehouse</div>;
+    return <div className="text-red-600">Error loading warehouse</div>;
   }
 
   if (!currentWarehouse) return null;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-10">
+    <div className="max-w-5xl mx-auto space-y-8">
+      <div className="flex justify-between">
+        <h1 className="text-2xl font-bold">Warehouse Details</h1>
 
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-800">
-            Warehouse Details
-          </h1>
-          <p className="text-gray-500 mt-1">
-            {currentWarehouse.district_name} • {currentWarehouse.branch_name}
-          </p>
-        </div>
-
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => navigate(-1)} className="flex items-center gap-2">
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate(-1)}>
             <ArrowLeft size={16} /> Back
           </Button>
 
-          <Button onClick={() => navigate(`/admin/warehouses/edit/${id}`)} className="flex items-center gap-2">
+          <Button onClick={() => navigate(`/admin/warehouses/edit/${id}`)}>
             <Edit size={16} /> Edit
           </Button>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 divide-y">
-
-        <Section>
+      <Card>
+        <Section title="Basic Information">
           <Field label="District" value={currentWarehouse.district_name} />
           <Field label="Branch" value={currentWarehouse.branch_name} />
-          <Field label="Warehouse Owner" value={currentWarehouse.warehouse_owner_name} />
-          <Field label="Warehouse Type" value={currentWarehouse.warehouse_type} />
+          <Field
+            label="Warehouse Name"
+            value={currentWarehouse.warehouse_name}
+          />
+          <Field label="Owner" value={currentWarehouse.warehouse_owner_name} />
+          <Field label="Type" value={currentWarehouse.warehouse_type} />
           <Field label="Warehouse No" value={currentWarehouse.warehouse_no} />
           <Field label="GST No" value={currentWarehouse.gst_no} />
-          <Field label="Warehouse Name" value={currentWarehouse.warehouse_name} />
         </Section>
 
-        <Section>
-          <Field label="PAN Card Holder" value={currentWarehouse.pan_card_holder} />
-          <Field label="PAN Card Number" value={currentWarehouse.pan_card_number} />
+        <Section title="Scheme & Capacity">
+          <Field label="Scheme" value={currentWarehouse.scheme} />
+          <Field
+            label="Scheme Rate"
+            value={currentWarehouse.scheme_rate_amount}
+          />
+          <Field
+            label="Actual Capacity"
+            value={currentWarehouse.actual_storage_capacity}
+          />
+          <Field
+            label="Approved Capacity"
+            value={currentWarehouse.approved_storage_capacity}
+          />
         </Section>
 
-      </div>
+        <Section title="Bank Solvency">
+          <Field
+            label="Affidavit Amount"
+            value={currentWarehouse.bank_solvency_affidavit_amount}
+          />
+          <Field
+            label="Certificate Amount"
+            value={currentWarehouse.bank_solvency_certificate_amount}
+          />
+          <Field
+            label="Deduction"
+            value={currentWarehouse.bank_solvency_deduction_by_bill}
+          />
+          <Field
+            label="Balance"
+            value={currentWarehouse.bank_solvency_balance_amount}
+          />
+        </Section>
+
+        <Section title="EMI">
+          <Field label="Total EMI" value={currentWarehouse.total_emi} />
+          <Field
+            label="EMI Deduction"
+            value={currentWarehouse.emi_deduction_by_bill}
+          />
+          <Field
+            label="EMI Balance"
+            value={currentWarehouse.balance_amount_emi}
+          />
+        </Section>
+
+        <Section title="PAN Details">
+          <Field label="PAN Holder" value={currentWarehouse.pan_card_holder} />
+          <Field label="PAN Number" value={currentWarehouse.pan_card_number} />
+        </Section>
+      </Card>
     </div>
   );
 };
 
-export default ViewWarehouse;
+const Card = ({ children }) => (
+  <div className="bg-white p-6 rounded-xl border space-y-6">{children}</div>
+);
 
-const Section = ({ children }) => (
-  <div className="p-6 space-y-6">{children}</div>
+const Section = ({ title, children }) => (
+  <div>
+    <h2 className="font-semibold mb-4">{title}</h2>
+    <div className="space-y-3">{children}</div>
+  </div>
 );
 
 const Field = ({ label, value }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div className="text-gray-500 text-sm">{label}</div>
-    <div className="font-medium text-gray-800">{value || "-"}</div>
+  <div className="flex justify-between border-b pb-2">
+    <span className="text-gray-500">{label}</span>
+    <span className="font-medium">{value || "-"}</span>
   </div>
 );
+
+export default ViewWarehouse;
