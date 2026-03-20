@@ -14,11 +14,104 @@ const steps = [
   "Scientific Capacity",
   "Deductions",
   "Payment",
-  "Preview",
+  // "Preview",
   "Remarks",
 ];
 
+const months = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+const getDaysInMonth = (month) => {
+  const map = {
+    January: 31,
+    February: 28,
+    March: 31,
+    April: 30,
+    May: 31,
+    June: 30,
+    July: 31,
+    August: 31,
+    September: 30,
+    October: 31,
+    November: 30,
+    December: 31,
+  };
+  return map[month] || 0;
+};
+
 const AddPayment = () => {
+  const validateStep = () => {
+    let newErrors = {};
+
+    if (currentStep === 0) {
+      if (!formData.district_name)
+        newErrors.district_name = "District is required";
+      if (!formData.branch_name) newErrors.branch_name = "Branch is required";
+      if (!formData.warehouse_name)
+        newErrors.warehouse_name = "Warehouse is required";
+    }
+
+    if (currentStep === 1) {
+      if (!formData.month) newErrors.month = "Month is required";
+      if (!formData.financial_year)
+        newErrors.financial_year = "Financial year is required";
+      if (!formData.from_date) newErrors.from_date = "From date is required";
+      if (!formData.to_date) newErrors.to_date = "To date is required";
+      if (!formData.commodity) newErrors.commodity = "Commodity is required";
+      if (!formData.rate) newErrors.rate = "Rate is required";
+      if (!formData.bill_amount)
+        newErrors.bill_amount = "Bill amount is required";
+      if (!formData.bill_amount)
+        newErrors.bill_amount = "Bill amount is required";
+      if (!formData.depositers_name)
+        newErrors.depositers_name = "Depositers name is required";
+    }
+
+    setErrors(newErrors);
+
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateAll = () => {
+    let newErrors = {};
+
+    const requiredFields = [
+      "district_name",
+      "branch_name",
+      "warehouse_name",
+      "month",
+      "financial_year",
+      "from_date",
+      "to_date",
+      "commodity",
+      "rate",
+      "bill_amount",
+      "bill_amount",
+      "depositers_name",
+    ];
+
+    requiredFields.forEach((field) => {
+      if (!formData[field]) {
+        newErrors[field] = "This field is required";
+      }
+    });
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+  const [errors, setErrors] = useState({});
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -53,9 +146,9 @@ const AddPayment = () => {
     commodity: "",
     rate: "",
     rent_bill_amount: "",
-    total_jv_amount: "",
-    actual_passed_amount: "",
-    total_deduction_amount: "",
+
+    bill_amount: "",
+    depositers_name: "",
 
     scientific_capacity: "",
     number_of_days: "",
@@ -88,21 +181,22 @@ const AddPayment = () => {
   });
 
   useEffect(() => {
-    const totalJV = Number(formData.total_jv_amount || 0);
-    const actualPassed = Number(formData.actual_passed_amount || 0);
+    const billAmount = Number(formData.bill_amount || 0);
+    const actualPassed = billAmount;
 
-    const tds = totalJV * 0.1;
-    const deduction20 = totalJV * 0.2;
+    const tds = billAmount * 0.1;
+    const deduction20 = billAmount * 0.2;
 
-    const payToJVS = actualPassed - tds - deduction20;
+    const payToJVS = billAmount - tds - deduction20;
 
     setFormData((prev) => ({
       ...prev,
+      actual_passed_amount: actualPassed.toFixed(2),
       tds: tds.toFixed(2),
       deduction_20_percent: deduction20.toFixed(2),
       pay_to_jvs_amount: payToJVS.toFixed(2),
     }));
-  }, [formData.total_jv_amount, formData.actual_passed_amount]);
+  }, [formData.bill_amount]);
 
   /* ================= FETCH WAREHOUSES ================= */
   useEffect(() => {
@@ -183,17 +277,34 @@ const AddPayment = () => {
   };
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
+
     setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: value,
+    }));
+
+    setErrors((prev) => ({
+      ...prev,
+      [name]: "",
     }));
   };
 
-  const nextStep = () => setCurrentStep((prev) => prev + 1);
+  const nextStep = () => {
+    if (!validateStep()) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+    setCurrentStep((prev) => prev + 1);
+  };
   const prevStep = () => setCurrentStep((prev) => prev - 1);
 
   /* ================= SUBMIT ================= */
   const handleSubmit = async () => {
+    if (!validateAll()) {
+      toast.error("Please fill all required fields");
+      return;
+    }
     try {
       setLoading(true);
 
@@ -203,9 +314,8 @@ const AddPayment = () => {
         /* BILLING */
         rate: Number(formData.rate || 0),
         rent_bill_amount: Number(formData.rent_bill_amount || 0),
-        total_jv_amount: Number(formData.total_jv_amount || 0),
-        actual_passed_amount: Number(formData.actual_passed_amount || 0),
-        total_deduction_amount: Number(formData.total_deduction_amount || 0),
+
+        bill_amount: Number(formData.bill_amount || 0),
 
         /* SCIENTIFIC CAPACITY */
         scientific_capacity: Number(formData.scientific_capacity || 0),
@@ -298,7 +408,7 @@ const AddPayment = () => {
         {currentStep === 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* DISTRICT */}
-            <FormField label="District *">
+            <FormField label="District *" error={errors.district_name}>
               <select
                 name="district_name"
                 value={formData.district_name}
@@ -323,7 +433,7 @@ const AddPayment = () => {
             </FormField>
 
             {/* BRANCH */}
-            <FormField label="Branch *">
+            <FormField label="Branch *" error={errors.branch_name}>
               <select
                 name="branch_name"
                 value={formData.branch_name}
@@ -368,7 +478,7 @@ const AddPayment = () => {
             </FormField>
 
             {/* WAREHOUSE NAME */}
-            <FormField label="Warehouse Name *">
+            <FormField label="Warehouse Name *" error={errors.warehouse_name}>
               <select
                 value={formData.warehouse_name}
                 onChange={(e) => handleWarehouseSelect(e.target.value)}
@@ -383,11 +493,19 @@ const AddPayment = () => {
             </FormField>
 
             <FormField label="Warehouse No">
-              <Input value={formData.warehouse_no} readOnly placeholder="Warehouse No"/>
+              <Input
+                value={formData.warehouse_no}
+                readOnly
+                placeholder="Warehouse No"
+              />
             </FormField>
 
             <FormField label="PAN Number">
-              <Input value={formData.pan_card_number} readOnly placeholder="PAN Number" />
+              <Input
+                value={formData.pan_card_number}
+                readOnly
+                placeholder="PAN Number"
+              />
             </FormField>
           </div>
         )}
@@ -413,16 +531,28 @@ const AddPayment = () => {
               />
             </FormField>
 
-            <FormField label="Month">
-              <Input
+            <FormField label="Month *" error={errors.month}>
+              <select
                 name="month"
                 value={formData.month}
-                onChange={handleChange}
-                placeholder="Month"
-              />
+                onChange={(e) => {
+                  const month = e.target.value;
+                  setFormData({
+                    ...formData,
+                    month,
+                    number_of_days: getDaysInMonth(month),
+                  });
+                }}
+                className="w-full border rounded-lg p-2"
+              >
+                <option value="">Select Month</option>
+                {months.map((m) => (
+                  <option key={m}>{m}</option>
+                ))}
+              </select>
             </FormField>
 
-            <FormField label="Financial Year">
+            <FormField label="Financial Year" error={errors.financial_year}>
               <Input
                 name="financial_year"
                 value={formData.financial_year}
@@ -431,9 +561,9 @@ const AddPayment = () => {
               />
             </FormField>
 
-            <FormField label="From Date">
+            <FormField label="From Date" error={errors.from_date}>
               <Input
-                type="date"
+                type="text"
                 name="from_date"
                 value={formData.from_date}
                 onChange={handleChange}
@@ -441,9 +571,9 @@ const AddPayment = () => {
               />
             </FormField>
 
-            <FormField label="To Date">
+            <FormField label="To Date" error={errors.to_date}>
               <Input
-                type="date"
+                type="text"
                 name="to_date"
                 value={formData.to_date}
                 onChange={handleChange}
@@ -451,7 +581,7 @@ const AddPayment = () => {
               />
             </FormField>
 
-            <FormField label="Commodity">
+            <FormField label="Commodity *" error={errors.commodity}>
               <Input
                 name="commodity"
                 value={formData.commodity}
@@ -460,7 +590,7 @@ const AddPayment = () => {
               />
             </FormField>
 
-            <FormField label="Rate">
+            <FormField label="Rate *" error={errors.rate}>
               <Input
                 type="number"
                 name="rate"
@@ -480,13 +610,13 @@ const AddPayment = () => {
               />
             </FormField>
 
-            <FormField label="Total JV Amount">
+            <FormField label="Bill Amount *" error={errors.bill_amount}>
               <Input
                 type="number"
-                name="total_jv_amount"
-                value={formData.total_jv_amount}
+                name="bill_amount"
+                value={formData.bill_amount}
                 onChange={handleChange}
-                placeholder="Total JV Amount"
+                placeholder="Bill Amount"
               />
             </FormField>
 
@@ -495,18 +625,17 @@ const AddPayment = () => {
                 type="number"
                 name="actual_passed_amount"
                 value={formData.actual_passed_amount}
-                onChange={handleChange}
+                className="bg-gray-100"
                 placeholder="Actual Passed Amount"
               />
             </FormField>
 
-            <FormField label="Total Deduction Amount">
+            <FormField label="Depositers Name *" error={errors.depositers_name}>
               <Input
-                type="number"
-                name="total_deduction_amount"
-                value={formData.total_deduction_amount}
+                name="depositers_name"
+                value={formData.depositers_name}
                 onChange={handleChange}
-                placeholder="Total Deduction Amount"
+                placeholder="Depositers Name"
               />
             </FormField>
           </div>
@@ -527,11 +656,10 @@ const AddPayment = () => {
 
             <FormField label="Number of Days">
               <Input
-                type="number"
                 name="number_of_days"
                 value={formData.number_of_days}
-                onChange={handleChange}
-                placeholder="Number of Days"
+                readOnly
+                className="bg-gray-100"
               />
             </FormField>
 
@@ -726,7 +854,7 @@ const AddPayment = () => {
 
             <FormField label="Payment Date">
               <Input
-                type="date"
+                type="text"
                 name="payment_date"
                 value={formData.payment_date}
                 onChange={handleChange}
@@ -746,18 +874,26 @@ const AddPayment = () => {
         )}
 
         {/* ================= STEP 6 Preview ================= */}
-        {currentStep === 5 && (
+        {/* {currentStep === 5 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="Rent Bill Amount">
-              <Input value={formData.rent_bill_amount} readOnly placeholder="Rent Bill Amount"/>
+              <Input
+                value={formData.rent_bill_amount}
+                readOnly
+                placeholder="Rent Bill Amount"
+              />
             </FormField>
 
             <FormField label="Total Deduction Amount">
-              <Input value={formData.total_deduction_amount} readOnly placeholder="Total Deduction Amount"/>
+              <Input
+                value={formData.total_deduction_amount}
+                readOnly
+                placeholder="Total Deduction Amount"
+              />
             </FormField>
 
             <FormField label="TDS">
-              <Input value={formData.tds} readOnly placeholder="TDS"/>
+              <Input value={formData.tds} readOnly placeholder="TDS" />
             </FormField>
 
             <FormField label="Net Amount Payable">
@@ -770,10 +906,10 @@ const AddPayment = () => {
               />
             </FormField>
           </div>
-        )}
+        )} */}
 
         {/* ================= STEP 7 Remarks ================= */}
-        {currentStep === 6 && (
+        {currentStep === 5 && (
           <FormField label="Remarks">
             <textarea
               name="remarks"
@@ -825,10 +961,11 @@ const AddPayment = () => {
   );
 };
 
-const FormField = ({ label, children }) => (
+const FormField = ({ label, children, error }) => (
   <div className="flex flex-col">
     <label className="text-sm font-medium mb-2 text-gray-700">{label}</label>
     {children}
+    {error && <span className="text-red-500 text-sm mt-1">{error}</span>}
   </div>
 );
 
