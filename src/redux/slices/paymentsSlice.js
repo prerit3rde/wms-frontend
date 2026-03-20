@@ -1,106 +1,106 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import * as claimService from "../../services/claims.service";
+import * as paymentService from "../../services/payments.service";
 
-/* ================= FETCH CLAIMS ================= */
-export const fetchClaims = createAsyncThunk(
-  "claims/fetchAll",
+/* ================= FETCH PAYMENTS ================= */
+export const fetchPayments = createAsyncThunk(
+  "payments/fetchAll",
   async (params, { rejectWithValue }) => {
     try {
-      const res = await claimService.getClaims(params);
+      const res = await paymentService.getPayments(params);
       return res.data; // { success, data, total }
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch claims"
+        error.response?.data?.message || "Failed to fetch payments"
       );
     }
   }
 );
 
 /* ================= FETCH SINGLE ================= */
-export const fetchClaimById = createAsyncThunk(
-  "claims/fetchOne",
+export const fetchPaymentById = createAsyncThunk(
+  "payments/fetchOne",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await claimService.getClaimById(id);
+      const res = await paymentService.getPaymentById(id);
       return res.data.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch claim"
+        error.response?.data?.message || "Failed to fetch payment"
       );
     }
   }
 );
 
 /* ================= CREATE ================= */
-export const createNewClaim = createAsyncThunk(
-  "claims/create",
+export const createNewPayment = createAsyncThunk(
+  "payments/create",
   async (data, { rejectWithValue }) => {
     try {
-      const res = await claimService.createClaim(data);
+      const res = await paymentService.createPayment(data);
       return res.data.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to create claim"
+        error.response?.data?.message || "Failed to create payment"
       );
     }
   }
 );
 
 /* ================= UPDATE ================= */
-export const updateExistingClaim = createAsyncThunk(
-  "claims/update",
+export const updateExistingPayment = createAsyncThunk(
+  "payments/update",
   async ({ id, data }, { rejectWithValue }) => {
     try {
-      const res = await claimService.updateClaim(id, data);
+      const res = await paymentService.updatePayment(id, data);
       return res.data.data; // now this exists
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to update claim"
+        error.response?.data?.message || "Failed to update payment"
       );
     }
   }
 );
 
 /* ================= DELETE ================= */
-export const removeClaim = createAsyncThunk(
-  "claims/delete",
+export const removePayment = createAsyncThunk(
+  "payments/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await claimService.deleteClaim(id);
+      await paymentService.deletePayment(id);
       return id;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to delete claim"
+        error.response?.data?.message || "Failed to delete payment"
       );
     }
   }
 );
 
 /* ================= APPROVE ================= */
-export const approveExistingClaim = createAsyncThunk(
-  "claims/approve",
+export const approveExistingPayment = createAsyncThunk(
+  "payments/approve",
   async (id, { rejectWithValue }) => {
     try {
-      await claimService.approveClaim(id);
+      await paymentService.approvePayment(id);
       return id;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to approve claim"
+        error.response?.data?.message || "Failed to approve payment"
       );
     }
   }
 );
 
 /* ================= REJECT ================= */
-export const rejectExistingClaim = createAsyncThunk(
-  "claims/reject",
+export const rejectExistingPayment = createAsyncThunk(
+  "payments/reject",
   async (id, { rejectWithValue }) => {
     try {
-      await claimService.rejectClaim(id);
+      await paymentService.rejectPayment(id);
       return id;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to reject claim"
+        error.response?.data?.message || "Failed to reject payment"
       );
     }
   }
@@ -109,7 +109,7 @@ export const rejectExistingClaim = createAsyncThunk(
 /* ================= INITIAL STATE ================= */
 const initialState = {
   items: [],
-  currentClaim: null,
+  currentPayment: null,
   total: 0,
   totalPages: 0,
   page: 1,
@@ -119,8 +119,8 @@ const initialState = {
 };
 
 /* ================= SLICE ================= */
-const claimsSlice = createSlice({
-  name: "claims",
+const paymentsSlice = createSlice({
+  name: "payments",
   initialState,
   reducers: {
     setPage: (state, action) => {
@@ -129,19 +129,19 @@ const claimsSlice = createSlice({
     setLimit: (state, action) => {
       state.limit = action.payload;
     },
-    clearCurrentClaim: (state) => {
-      state.currentClaim = null;
+    clearCurrentPayment: (state) => {
+      state.currentPayment = null;
     },
   },
   extraReducers: (builder) => {
     builder
 
       /* FETCH ALL */
-      .addCase(fetchClaims.pending, (state) => {
+      .addCase(fetchPayments.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchClaims.fulfilled, (state, action) => {
+      .addCase(fetchPayments.fulfilled, (state, action) => {
         state.loading = false;
         state.items = action.payload.data || [];
         state.total = action.payload.total || 0;
@@ -149,23 +149,23 @@ const claimsSlice = createSlice({
           state.total / state.limit
         );
       })
-      .addCase(fetchClaims.rejected, (state, action) => {
+      .addCase(fetchPayments.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
 
       /* FETCH ONE */
-      .addCase(fetchClaimById.fulfilled, (state, action) => {
-        state.currentClaim = action.payload;
+      .addCase(fetchPaymentById.fulfilled, (state, action) => {
+        state.currentPayment = action.payload;
       })
 
       /* CREATE */
-      .addCase(createNewClaim.fulfilled, (state, action) => {
+      .addCase(createNewPayment.fulfilled, (state, action) => {
         state.items.unshift(action.payload);
       })
 
       /* UPDATE */
-      .addCase(updateExistingClaim.fulfilled, (state, action) => {
+      .addCase(updateExistingPayment.fulfilled, (state, action) => {
         const index = state.items.findIndex(
           (item) => item.id === action.payload.id
         );
@@ -176,26 +176,26 @@ const claimsSlice = createSlice({
       })
 
       /* DELETE */
-      .addCase(removeClaim.fulfilled, (state, action) => {
+      .addCase(removePayment.fulfilled, (state, action) => {
         state.items = state.items.filter(
           (item) => item.id !== action.payload
         );
       })
 
       /* APPROVE */
-      .addCase(approveExistingClaim.fulfilled, (state, action) => {
-        const claim = state.items.find(
+      .addCase(approveExistingPayment.fulfilled, (state, action) => {
+        const payment = state.items.find(
           (item) => item.id === action.payload
         );
-        if (claim) claim.status = "Approved";
+        if (payment) payment.status = "Approved";
       })
 
       /* REJECT */
-      .addCase(rejectExistingClaim.fulfilled, (state, action) => {
-        const claim = state.items.find(
+      .addCase(rejectExistingPayment.fulfilled, (state, action) => {
+        const payment = state.items.find(
           (item) => item.id === action.payload
         );
-        if (claim) claim.status = "Rejected";
+        if (payment) payment.status = "Rejected";
       });
   },
 });
@@ -203,7 +203,7 @@ const claimsSlice = createSlice({
 export const {
   setPage,
   setLimit,
-  clearCurrentClaim,
-} = claimsSlice.actions;
+  clearCurrentPayment,
+} = paymentsSlice.actions;
 
-export default claimsSlice.reducer;
+export default paymentsSlice.reducer;

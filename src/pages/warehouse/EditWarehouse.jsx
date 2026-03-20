@@ -247,7 +247,7 @@ const EditWarehouse = () => {
               </FormField>
 
               {form.is_affidavit ? (
-                <FormField label="Affidavit Amount">
+                <FormField label="Bank Solvency Affidavit Amount">
                   <Input value={affidavitAmount} readOnly />
                 </FormField>
               ) : (

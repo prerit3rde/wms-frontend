@@ -35,11 +35,11 @@ const Sidebar = () => {
       ],
     },
     {
-      label: "Claims",
+      label: "Payments",
       icon: <FileText size={20} />,
       submenu: [
-        { label: "Claims List", path: "/admin/claims" },
-        { label: "Add New Claim", path: "/admin/claims/add" },
+        { label: "Payments List", path: "/admin/payments" },
+        { label: "Add New Payment", path: "/admin/payments/add" },
       ],
     },
     {

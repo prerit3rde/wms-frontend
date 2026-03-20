@@ -19,11 +19,11 @@ import EditWarehouse from "../pages/warehouse/EditWarehouse";
 import ViewWarehouse from "../pages/warehouse/ViewWarehouse";
 import WarehouseType from "../pages/warehouse/AddWarehouseType";
 
-// Claims Pages
-import ClaimList from "../pages/claims/ClaimList";
-import AddClaim from "../pages/claims/AddClaim";
-import EditClaim from "../pages/claims/EditClaim";
-import ViewClaim from "../pages/claims/ViewClaim";
+// Payments Pages
+import PaymentList from "../pages/payments/PaymentList";
+import AddPayment from "../pages/payments/AddPayment";
+import EditPayment from "../pages/payments/EditPayment";
+import ViewPayment from "../pages/payments/ViewPayment";
 
 // Profile Page
 import Profile from "../pages/profile/Profile";
@@ -61,11 +61,11 @@ const AppRoutes = () => {
           <Route path="warehouses/view/:id" element={<ViewWarehouse />} />
           <Route path="warehouses/edit/:id" element={<EditWarehouse />} />
 
-          {/* Claims */}
-          <Route path="claims" element={<ClaimList />} />
-          <Route path="claims/add" element={<AddClaim />} />
-          <Route path="claims/view/:id" element={<ViewClaim />} />
-          <Route path="claims/edit/:id" element={<EditClaim />} />
+          {/* Payments */}
+          <Route path="payments" element={<PaymentList />} />
+          <Route path="payments/add" element={<AddPayment />} />
+          <Route path="payments/view/:id" element={<ViewPayment />} />
+          <Route path="payments/edit/:id" element={<EditPayment />} />
 
           {/* Profile */}
           <Route path="profile" element={<Profile />} />

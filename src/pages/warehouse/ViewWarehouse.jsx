@@ -34,11 +34,18 @@ const ViewWarehouse = () => {
         <h1 className="text-2xl font-bold">Warehouse Details</h1>
 
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate(-1)}>
+          <Button
+            className="gap-2"
+            variant="outline"
+            onClick={() => navigate(-1)}
+          >
             <ArrowLeft size={16} /> Back
           </Button>
 
-          <Button onClick={() => navigate(`/admin/warehouses/edit/${id}`)}>
+          <Button
+            className="gap-2"
+            onClick={() => navigate(`/admin/warehouses/edit/${id}`)}
+          >
             <Edit size={16} /> Edit
           </Button>
         </div>

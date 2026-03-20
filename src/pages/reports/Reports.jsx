@@ -51,7 +51,7 @@ const Reports = () => {
     try {
       setLoading(true);
 
-      await axios.post("/reports/claims/generate", {
+      await axios.post("/reports/payments/generate", {
         filters: {
           district_name: district,
           branch_name: branch,
@@ -86,7 +86,7 @@ const Reports = () => {
 
       link.href = url;
 
-      link.setAttribute("download", `claims-report-${id}.xlsx`);
+      link.setAttribute("download", `payments-report-${id}.xlsx`);
 
       document.body.appendChild(link);
 
@@ -134,11 +134,11 @@ const Reports = () => {
       {/* HEADER */}
       <div>
         <h1 className="text-3xl font-bold text-gray-800">
-          Claims Report Generation
+          Payments Report Generation
         </h1>
 
         <p className="text-gray-500 mt-1">
-          Filter, generate and export claims data
+          Filter, generate and export payments data
         </p>
       </div>
 

@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useParams } from "react-router-dom";
-import {
-  fetchClaimById,
-  updateExistingClaim,
-} from "../../redux/slices/claimsSlice";
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { createNewPayment } from "../../redux/slices/paymentsSlice";
+import axiosInstance from "../../services/axios";
 import Card from "../../components/global/Card";
 import Button from "../../components/global/Button";
 import Input from "../../components/global/Input";
@@ -15,22 +13,22 @@ const steps = [
   "Billing Details",
   "Scientific Capacity",
   "Deductions",
-  "Preview",
   "Payment",
+  "Preview",
   "Remarks",
 ];
 
-const EditClaim = () => {
-  const { id } = useParams();
+const AddPayment = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { currentClaim, loading } = useSelector((state) => state.claims);
-
-  const isLocked =
-    currentClaim?.status === "Approved" || currentClaim?.status === "Rejected";
-
   const [currentStep, setCurrentStep] = useState(0);
+  const [warehouses, setWarehouses] = useState([]);
+  const [filteredWarehouses, setFilteredWarehouses] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const [filteredBranches, setFilteredBranches] = useState([]);
+  const [filteredTypes, setFilteredTypes] = useState([]);
 
   const [formData, setFormData] = useState({
     district_name: "",
@@ -106,23 +104,83 @@ const EditClaim = () => {
     }));
   }, [formData.total_jv_amount, formData.actual_passed_amount]);
 
-  /* ================= FETCH CLAIM ================= */
+  /* ================= FETCH WAREHOUSES ================= */
   useEffect(() => {
-    dispatch(fetchClaimById(id));
-  }, [dispatch, id]);
+    const loadWarehouses = async () => {
+      const res = await axiosInstance.get("/warehouses");
+      setWarehouses(res.data.data || []);
+    };
+    loadWarehouses();
+  }, []);
 
+  /* ================= FILTER BRANCH BY DISTRICT ================= */
   useEffect(() => {
-    if (currentClaim) {
-      setFormData(currentClaim);
-
-      if (
-        currentClaim.status === "Approved" ||
-        currentClaim.status === "Rejected"
-      ) {
-        setCurrentStep(6); // Jump to Remarks
-      }
+    if (!formData.district_name) {
+      setFilteredBranches([]);
+      return;
     }
-  }, [currentClaim]);
+
+    const branches = warehouses.filter(
+      (w) => w.district_name === formData.district_name,
+    );
+
+    setFilteredBranches([...new Set(branches.map((w) => w.branch_name))]);
+  }, [formData.district_name, warehouses]);
+
+  /* ================= FILTER TYPE BY BRANCH ================= */
+  useEffect(() => {
+    if (!formData.branch_name) {
+      setFilteredTypes([]);
+      return;
+    }
+
+    const types = warehouses.filter(
+      (w) =>
+        w.branch_name === formData.branch_name &&
+        w.district_name === formData.district_name,
+    );
+
+    setFilteredTypes([...new Set(types.map((w) => w.warehouse_type))]);
+  }, [formData.branch_name, formData.district_name, warehouses]);
+
+  /* ================= FILTER WAREHOUSE ================= */
+  useEffect(() => {
+    const list = warehouses.filter(
+      (w) =>
+        w.district_name === formData.district_name &&
+        w.branch_name === formData.branch_name &&
+        w.warehouse_type === formData.warehouse_type,
+    );
+
+    setFilteredWarehouses(list);
+  }, [
+    formData.district_name,
+    formData.branch_name,
+    formData.warehouse_type,
+    warehouses,
+  ]);
+
+  /* ================= AUTO SNAPSHOT ================= */
+  const handleWarehouseSelect = (name) => {
+    const selected = warehouses.find(
+      (w) =>
+        w.warehouse_name === name && w.branch_name === formData.branch_name,
+    );
+
+    if (selected) {
+      setFormData((prev) => ({
+        ...prev,
+        district_name: selected.district_name,
+        warehouse_name: selected.warehouse_name,
+        warehouse_owner_name: selected.warehouse_owner_name,
+        warehouse_no: selected.warehouse_no,
+        sr_no: selected.sr_no,
+        pan_card_holder: selected.pan_card_holder,
+        pan_card_number: selected.pan_card_number,
+        deposit_name: selected.deposit_name,
+      }));
+    }
+  };
 
   const handleChange = (e) => {
     setFormData((prev) => ({
@@ -134,18 +192,22 @@ const EditClaim = () => {
   const nextStep = () => setCurrentStep((prev) => prev + 1);
   const prevStep = () => setCurrentStep((prev) => prev - 1);
 
-  /* ================= UPDATE ================= */
-  const handleUpdate = async () => {
+  /* ================= SUBMIT ================= */
+  const handleSubmit = async () => {
     try {
+      setLoading(true);
+
       const payload = {
         ...formData,
 
+        /* BILLING */
         rate: Number(formData.rate || 0),
         rent_bill_amount: Number(formData.rent_bill_amount || 0),
         total_jv_amount: Number(formData.total_jv_amount || 0),
         actual_passed_amount: Number(formData.actual_passed_amount || 0),
         total_deduction_amount: Number(formData.total_deduction_amount || 0),
 
+        /* SCIENTIFIC CAPACITY */
         scientific_capacity: Number(formData.scientific_capacity || 0),
         number_of_days: Number(formData.number_of_days || 0),
         per_day_rate: Number(formData.per_day_rate || 0),
@@ -153,6 +215,7 @@ const EditClaim = () => {
           formData.rent_amount_on_scientific_capacity || 0,
         ),
 
+        /* DEDUCTIONS */
         tds: Number(formData.tds || 0),
         amount_deducted_against_gain_loss: Number(
           formData.amount_deducted_against_gain_loss || 0,
@@ -170,33 +233,30 @@ const EditClaim = () => {
         insurance: Number(formData.insurance || 0),
         other_deduction_amount: Number(formData.other_deduction_amount || 0),
 
+        /* SECURITY */
         security_fund_amount: Number(formData.security_fund_amount || 0),
+
+        /* PAYMENT */
         pay_to_jvs_amount: Number(formData.pay_to_jvs_amount || 0),
 
+        /* FINAL */
         net_amount_payable: Number(formData.net_amount_payable || 0),
       };
 
-      const result = await dispatch(
-        updateExistingClaim({
-          id,
-          data: payload,
-        }),
-      );
+      const result = await dispatch(createNewPayment(payload));
 
-      if (updateExistingClaim.fulfilled.match(result)) {
-        toast.success("Claim updated successfully");
-        navigate("/admin/claims");
-      } else {
-        toast.error("Failed to update claim");
+      if (result.meta.requestStatus === "fulfilled") {
+        navigate("/admin/payments");
+        toast.success("Payment created successfully");
       }
-    } catch (error) {
-      toast.error("Failed to update claim");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Edit Claim</h1>
+      <h1 className="text-2xl font-semibold">Add Payment</h1>
 
       {/* ================= STEPPER ================= */}
       <div className="relative mb-10">
@@ -226,6 +286,7 @@ const EditClaim = () => {
       </div>
 
       <Card className="space-y-6">
+        {/* STEP TITLE */}
         <div>
           <h2 className="text-lg font-semibold">
             Step {currentStep + 1}: {steps[currentStep]}
@@ -233,57 +294,105 @@ const EditClaim = () => {
           <div className="h-px bg-gray-300 mt-2"></div>
         </div>
 
-        {/* ================= STEP 1 ================= */}
+        {/* ================= STEP 1 Warehouse Details ================= */}
         {currentStep === 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField label="District">
-              <Input
+            {/* DISTRICT */}
+            <FormField label="District *">
+              <select
                 name="district_name"
                 value={formData.district_name}
-                disabled
-              />
+                onChange={(e) => {
+                  setFormData({
+                    ...formData,
+                    district_name: e.target.value,
+                    branch_name: "",
+                    warehouse_type: "",
+                    warehouse_name: "",
+                  });
+                }}
+                className="w-full border rounded-lg p-2"
+              >
+                <option value="">Select District</option>
+                {[...new Set(warehouses.map((w) => w.district_name))].map(
+                  (d) => (
+                    <option key={d}>{d}</option>
+                  ),
+                )}
+              </select>
             </FormField>
 
-            <FormField label="Branch">
-              <Input name="branch_name" value={formData.branch_name} disabled />
+            {/* BRANCH */}
+            <FormField label="Branch *">
+              <select
+                name="branch_name"
+                value={formData.branch_name}
+                onChange={(e) => {
+                  setFormData({
+                    ...formData,
+                    branch_name: e.target.value,
+                    warehouse_type: "",
+                    warehouse_name: "",
+                  });
+                }}
+                className="w-full border rounded-lg p-2"
+                disabled={!formData.district_name}
+              >
+                <option value="">Select Branch</option>
+                {filteredBranches.map((b) => (
+                  <option key={b}>{b}</option>
+                ))}
+              </select>
             </FormField>
 
-            <FormField label="Warehouse Type">
-              <Input
+            {/* TYPE */}
+            <FormField label="Warehouse Type *">
+              <select
                 name="warehouse_type"
                 value={formData.warehouse_type}
-                disabled
-              />
+                onChange={(e) => {
+                  setFormData({
+                    ...formData,
+                    warehouse_type: e.target.value,
+                    warehouse_name: "",
+                  });
+                }}
+                className="w-full border rounded-lg p-2"
+                disabled={!formData.branch_name}
+              >
+                <option value="">Select Type</option>
+                {filteredTypes.map((t) => (
+                  <option key={t}>{t}</option>
+                ))}
+              </select>
             </FormField>
 
-            <FormField label="Warehouse Name">
-              <Input
-                name="warehouse_name"
+            {/* WAREHOUSE NAME */}
+            <FormField label="Warehouse Name *">
+              <select
                 value={formData.warehouse_name}
-                disabled
-              />
+                onChange={(e) => handleWarehouseSelect(e.target.value)}
+                className="w-full border rounded-lg p-2"
+                disabled={!formData.warehouse_type}
+              >
+                <option value="">Select Warehouse</option>
+                {filteredWarehouses.map((w) => (
+                  <option key={w.id}>{w.warehouse_name}</option>
+                ))}
+              </select>
             </FormField>
 
             <FormField label="Warehouse No">
-              <Input
-                name="warehouse_no"
-                value={formData.warehouse_no}
-                disabled
-              />
+              <Input value={formData.warehouse_no} readOnly placeholder="Warehouse No"/>
             </FormField>
 
             <FormField label="PAN Number">
-              <Input
-                name="pan_card_number"
-                value={formData.pan_card_number}
-                disabled
-              />
+              <Input value={formData.pan_card_number} readOnly placeholder="PAN Number" />
             </FormField>
           </div>
         )}
 
-        {/* ================= STEP 2 ================= */}
-        {/* ================= STEP 2 ================= */}
+        {/* ================= STEP 2 Bill Details ================= */}
         {currentStep === 1 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="Rent Bill Number">
@@ -292,7 +401,6 @@ const EditClaim = () => {
                 value={formData.rent_bill_number}
                 onChange={handleChange}
                 placeholder="Rent Bill Number"
-                disabled={isLocked}
               />
             </FormField>
 
@@ -302,7 +410,6 @@ const EditClaim = () => {
                 value={formData.bill_type}
                 onChange={handleChange}
                 placeholder="Bill Type"
-                disabled={isLocked}
               />
             </FormField>
 
@@ -312,7 +419,6 @@ const EditClaim = () => {
                 value={formData.month}
                 onChange={handleChange}
                 placeholder="Month"
-                disabled={isLocked}
               />
             </FormField>
 
@@ -322,7 +428,6 @@ const EditClaim = () => {
                 value={formData.financial_year}
                 onChange={handleChange}
                 placeholder="Financial Year"
-                disabled={isLocked}
               />
             </FormField>
 
@@ -332,7 +437,7 @@ const EditClaim = () => {
                 name="from_date"
                 value={formData.from_date}
                 onChange={handleChange}
-                disabled={isLocked}
+                placeholder="From Date"
               />
             </FormField>
 
@@ -342,7 +447,7 @@ const EditClaim = () => {
                 name="to_date"
                 value={formData.to_date}
                 onChange={handleChange}
-                disabled={isLocked}
+                placeholder="To Date"
               />
             </FormField>
 
@@ -352,7 +457,6 @@ const EditClaim = () => {
                 value={formData.commodity}
                 onChange={handleChange}
                 placeholder="Commodity"
-                disabled={isLocked}
               />
             </FormField>
 
@@ -363,7 +467,6 @@ const EditClaim = () => {
                 value={formData.rate}
                 onChange={handleChange}
                 placeholder="Rate"
-                disabled={isLocked}
               />
             </FormField>
 
@@ -374,7 +477,6 @@ const EditClaim = () => {
                 value={formData.rent_bill_amount}
                 onChange={handleChange}
                 placeholder="Rent Bill Amount"
-                disabled={isLocked}
               />
             </FormField>
 
@@ -385,7 +487,6 @@ const EditClaim = () => {
                 value={formData.total_jv_amount}
                 onChange={handleChange}
                 placeholder="Total JV Amount"
-                disabled={isLocked}
               />
             </FormField>
 
@@ -396,7 +497,6 @@ const EditClaim = () => {
                 value={formData.actual_passed_amount}
                 onChange={handleChange}
                 placeholder="Actual Passed Amount"
-                disabled={isLocked}
               />
             </FormField>
 
@@ -407,42 +507,41 @@ const EditClaim = () => {
                 value={formData.total_deduction_amount}
                 onChange={handleChange}
                 placeholder="Total Deduction Amount"
-                disabled={isLocked}
               />
             </FormField>
           </div>
         )}
 
-        {/* ================= STEP 3 ================= */}
+        {/* ================= STEP 3 Scientific Capacity ================= */}
         {currentStep === 2 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="Scientific Capacity">
               <Input
-                disabled={isLocked}
                 type="number"
                 name="scientific_capacity"
                 value={formData.scientific_capacity}
                 onChange={handleChange}
+                placeholder="Scientific Capacity"
               />
             </FormField>
 
             <FormField label="Number of Days">
               <Input
-                disabled={isLocked}
                 type="number"
                 name="number_of_days"
                 value={formData.number_of_days}
                 onChange={handleChange}
+                placeholder="Number of Days"
               />
             </FormField>
 
             <FormField label="Per Day Rate">
               <Input
-                disabled={isLocked}
                 type="number"
                 name="per_day_rate"
                 value={formData.per_day_rate}
                 onChange={handleChange}
+                placeholder="Per Day Rate"
               />
             </FormField>
 
@@ -453,13 +552,12 @@ const EditClaim = () => {
                 value={formData.rent_amount_on_scientific_capacity}
                 onChange={handleChange}
                 placeholder="Rent Amount On Scientific Capacity"
-                disabled={isLocked}
               />
             </FormField>
           </div>
         )}
 
-        {/* ================= STEP 4 ================= */}
+        {/* ================= STEP 4 Deductions ================= */}
         {currentStep === 3 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="TDS">
@@ -467,7 +565,7 @@ const EditClaim = () => {
                 type="number"
                 name="tds"
                 value={formData.tds}
-                onChange={handleChange}
+                readOnly
                 placeholder="TDS"
               />
             </FormField>
@@ -497,7 +595,7 @@ const EditClaim = () => {
                 type="number"
                 name="deduction_20_percent"
                 value={formData.deduction_20_percent}
-                onChange={handleChange}
+                readOnly
                 placeholder="20% Deduction"
               />
             </FormField>
@@ -614,42 +712,8 @@ const EditClaim = () => {
           </div>
         )}
 
-        {/* ================= STEP 5 ================= */}
+        {/* ================= STEP 5 Payments ================= */}
         {currentStep === 4 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField label="Rent Bill Amount">
-              <Input
-                disabled={isLocked}
-                value={formData.rent_bill_amount}
-                readOnly
-              />
-            </FormField>
-
-            <FormField label="Total Deduction Amount">
-              <Input
-                disabled={isLocked}
-                value={formData.total_deduction_amount}
-                readOnly
-              />
-            </FormField>
-
-            <FormField label="TDS">
-              <Input disabled={isLocked} value={formData.tds} readOnly />
-            </FormField>
-
-            <FormField label="Net Amount Payable">
-              <Input
-                disabled={isLocked}
-                type="number"
-                name="net_amount_payable"
-                value={formData.net_amount_payable}
-                onChange={handleChange}
-              />
-            </FormField>
-          </div>
-        )}
-
-        {currentStep === 5 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="Payment By">
               <Input
@@ -657,7 +721,6 @@ const EditClaim = () => {
                 value={formData.payment_by}
                 onChange={handleChange}
                 placeholder="Payment Method"
-                disabled={isLocked}
               />
             </FormField>
 
@@ -667,7 +730,7 @@ const EditClaim = () => {
                 name="payment_date"
                 value={formData.payment_date}
                 onChange={handleChange}
-                disabled={isLocked}
+                placeholder="Payment Date"
               />
             </FormField>
 
@@ -677,13 +740,39 @@ const EditClaim = () => {
                 value={formData.qtr}
                 onChange={handleChange}
                 placeholder="Quarter"
-                disabled={isLocked}
               />
             </FormField>
           </div>
         )}
 
-        {/* ================= STEP 6 ================= */}
+        {/* ================= STEP 6 Preview ================= */}
+        {currentStep === 5 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField label="Rent Bill Amount">
+              <Input value={formData.rent_bill_amount} readOnly placeholder="Rent Bill Amount"/>
+            </FormField>
+
+            <FormField label="Total Deduction Amount">
+              <Input value={formData.total_deduction_amount} readOnly placeholder="Total Deduction Amount"/>
+            </FormField>
+
+            <FormField label="TDS">
+              <Input value={formData.tds} readOnly placeholder="TDS"/>
+            </FormField>
+
+            <FormField label="Net Amount Payable">
+              <Input
+                type="number"
+                name="net_amount_payable"
+                value={formData.net_amount_payable}
+                onChange={handleChange}
+                placeholder="Net Amount Payable"
+              />
+            </FormField>
+          </div>
+        )}
+
+        {/* ================= STEP 7 Remarks ================= */}
         {currentStep === 6 && (
           <FormField label="Remarks">
             <textarea
@@ -711,24 +800,22 @@ const EditClaim = () => {
             <div className="flex gap-3">
               <Button
                 variant="secondary"
-                onClick={() => navigate("/admin/claims")}
+                onClick={() => navigate("/admin/payments")}
               >
                 Cancel
               </Button>
-
               <Button onClick={nextStep}>Next</Button>
             </div>
           ) : (
             <div className="flex gap-3">
               <Button
                 variant="secondary"
-                onClick={() => navigate("/admin/claims")}
+                onClick={() => navigate("/admin/payments")}
               >
                 Cancel
               </Button>
-
-              <Button onClick={handleUpdate} disabled={loading}>
-                {loading ? "Updating..." : "Update Claim"}
+              <Button onClick={handleSubmit} disabled={loading}>
+                {loading ? "Adding..." : "Add Payment"}
               </Button>
             </div>
           )}
@@ -745,4 +832,4 @@ const FormField = ({ label, children }) => (
   </div>
 );
 
-export default EditClaim;
+export default AddPayment;

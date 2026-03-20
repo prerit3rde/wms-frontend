@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchWarehouses } from "../../redux/slices/warehouseSlice";
-import { fetchClaims } from "../../redux/slices/claimsSlice";
+import { fetchPayments } from "../../redux/slices/paymentsSlice";
 import { useNavigate } from "react-router-dom";
 import { Warehouse, FileText, Clock, Plus } from "lucide-react";
 import Card from "../../components/global/Card";
@@ -16,24 +16,24 @@ const DashboardHome = () => {
     (state) => state.warehouse,
   );
 
-  const { items: claims = [], total: claimTotal } = useSelector(
-    (state) => state.claims,
+  const { items: payments = [], total: paymentTotal } = useSelector(
+    (state) => state.payments,
   );
 
   /* ================= FETCH DATA ================= */
 
   useEffect(() => {
     dispatch(fetchWarehouses({ limit: 1000 }));
-    dispatch(fetchClaims({ limit: 1000 }));
+    dispatch(fetchPayments({ limit: 1000 }));
   }, [dispatch]);
 
   /* ================= DASHBOARD STATS ================= */
 
-  const pendingClaims = claims.filter(
-    (claim) => claim.status === "Pending",
+  const pendingPayments = payments.filter(
+    (payment) => payment.status === "Pending",
   ).length;
 
-  const recentClaims = claims.slice(0, 5);
+  const recentPayments = payments.slice(0, 5);
 
   return (
     <div className="space-y-8">
@@ -52,17 +52,17 @@ const DashboardHome = () => {
 
         <Card className="flex items-center justify-between">
           <div>
-            <p className="text-gray-500 text-sm">Total Claims</p>
-            <p className="text-3xl font-bold text-purple-600">{claimTotal}</p>
+            <p className="text-gray-500 text-sm">Total Payments</p>
+            <p className="text-3xl font-bold text-purple-600">{paymentTotal}</p>
           </div>
           <FileText size={34} className="text-purple-500" />
         </Card>
 
         <Card className="flex items-center justify-between">
           <div>
-            <p className="text-gray-500 text-sm">Pending Claims</p>
+            <p className="text-gray-500 text-sm">Pending Payments</p>
             <p className="text-3xl font-bold text-yellow-500">
-              {pendingClaims}
+              {pendingPayments}
             </p>
           </div>
           <Clock size={34} className="text-yellow-500" />
@@ -71,37 +71,37 @@ const DashboardHome = () => {
 
       {/* MAIN SECTION */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* RECENT CLAIMS */}
+        {/* RECENT PAYMENTS */}
         <Card className="lg:col-span-2">
           <div className="flex items-center gap-2 mb-4">
             <Clock size={20} />
-            <h2 className="text-lg font-semibold">Recent Claims</h2>
+            <h2 className="text-lg font-semibold">Recent Payments</h2>
           </div>
 
           <div className="space-y-3">
-            {recentClaims.length === 0 && (
-              <p className="text-gray-400 text-sm">No recent claims found</p>
+            {recentPayments.length === 0 && (
+              <p className="text-gray-400 text-sm">No recent payments found</p>
             )}
 
-            {recentClaims.map((claim) => (
+            {recentPayments.map((payment) => (
               <div
-                key={claim.id}
-                onClick={() => navigate(`/admin/claims/view/${claim.id}`)}
+                key={payment.id}
+                onClick={() => navigate(`/admin/payments/view/${payment.id}`)}
                 className="flex justify-between items-center border-b pb-2 cursor-pointer hover:bg-gray-50 px-2 py-1 rounded"
               >
-                <p className="text-gray-700">{claim.warehouse_name}</p>
+                <p className="text-gray-700">{payment.warehouse_name}</p>
 
                 <span
                   className={`text-xs px-3 py-1 rounded-full font-medium
                   ${
-                    claim.status === "Approved"
+                    payment.status === "Approved"
                       ? "bg-green-100 text-green-700"
-                      : claim.status === "Rejected"
+                      : payment.status === "Rejected"
                         ? "bg-red-100 text-red-700"
                         : "bg-yellow-100 text-yellow-700"
                   }`}
                 >
-                  {claim.status}
+                  {payment.status}
                 </span>
               </div>
             ))}
@@ -125,10 +125,10 @@ const DashboardHome = () => {
             </button>
 
             <button
-              onClick={() => navigate("/admin/claims/add")}
+              onClick={() => navigate("/admin/payments/add")}
               className="bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition cursor-pointer"
             >
-              Add Claim
+              Add Payment
             </button>
           </div>
         </Card>

@@ -2,10 +2,10 @@ import * as XLSX from "xlsx";
 import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  fetchClaims,
-  removeClaim,
+  fetchPayments,
+  removePayment,
   setPage,
-} from "../../redux/slices/claimsSlice";
+} from "../../redux/slices/paymentsSlice";
 import { Eye, Pencil, Trash2, Plus, Filter } from "lucide-react";
 import { Link } from "react-router-dom";
 import axios from "../../services/axios";
@@ -16,10 +16,10 @@ import Input from "../../components/global/Input";
 import Pagination from "../../components/global/Pagination";
 import toast from "react-hot-toast";
 
-const ClaimList = () => {
+const PaymentList = () => {
   const dispatch = useDispatch();
   const { items, totalPages, page, limit, loading } = useSelector(
-    (state) => state.claims,
+    (state) => state.payments,
   );
 
   /* ================= STATE ================= */
@@ -44,16 +44,16 @@ const ClaimList = () => {
   /* ================= FETCH FILTER OPTIONS ================= */
   useEffect(() => {
     const fetchFilters = async () => {
-      const res = await axios.get("/claims/filters");
+      const res = await axios.get("/payments/filters");
       setFilterOptions(res.data.data);
     };
     fetchFilters();
   }, []);
 
-  /* ================= FETCH CLAIMS ================= */
+  /* ================= FETCH PAYMENTS ================= */
   useEffect(() => {
     dispatch(
-      fetchClaims({
+      fetchPayments({
         page,
         limit,
         search,
@@ -153,7 +153,7 @@ const ClaimList = () => {
   /* ================= EXPORT EXCEL ================= */
   const handleExport = async () => {
     try {
-      const res = await axios.get("/claims", {
+      const res = await axios.get("/payments", {
         params: {
           page: 1,
           limit: 100000,
@@ -168,9 +168,9 @@ const ClaimList = () => {
         },
       });
 
-      let allClaims = res.data.data;
+      let allPayments = res.data.data;
 
-      if (!allClaims || allClaims.length === 0) {
+      if (!allPayments || allPayments.length === 0) {
         toast.error("No data to export");
         return;
       }
@@ -207,12 +207,12 @@ const ClaimList = () => {
 
       /* ================= REMOVE EMPTY APPROVED/REJECTED ================= */
 
-      const hasApproved = allClaims.some((c) => c.approved_by || c.approved_at);
+      const hasApproved = allPayments.some((c) => c.approved_by || c.approved_at);
 
-      const hasRejected = allClaims.some((c) => c.rejected_by || c.rejected_at);
+      const hasRejected = allPayments.some((c) => c.rejected_by || c.rejected_at);
 
-      const cleanedData = allClaims.map((claim) => {
-        const obj = { ...claim };
+      const cleanedData = allPayments.map((payment) => {
+        const obj = { ...payment };
 
         if (!hasApproved) {
           delete obj.approved_by;
@@ -273,7 +273,7 @@ const ClaimList = () => {
 
       const headerRows = [
         ["Warehouse Management System"],
-        ["Claims Report"],
+        ["Payments Report"],
         [`Exported By: ${adminName}`],
         [`Export Date: ${exportDate}`],
         [],
@@ -316,9 +316,9 @@ const ClaimList = () => {
 
       const workbook = XLSX.utils.book_new();
 
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Claims");
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Payments");
 
-      XLSX.writeFile(workbook, "claims_report.xlsx");
+      XLSX.writeFile(workbook, "payments_report.xlsx");
 
       toast.success("Excel exported successfully");
     } catch (error) {
@@ -366,7 +366,7 @@ const ClaimList = () => {
           <div className="flex gap-2">
             {/* VIEW */}
             <Link
-              to={`/admin/claims/view/${row.id}`}
+              to={`/admin/payments/view/${row.id}`}
               className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200"
             >
               <Eye size={16} />
@@ -374,10 +374,10 @@ const ClaimList = () => {
 
             {/* EDIT */}
             <Link
-              to={`/admin/claims/edit/${row.id}`}
+              to={`/admin/payments/edit/${row.id}`}
               onClick={() => {
                 if (isLocked) {
-                  toast("Approved and rejected claims can edit remark only.", {
+                  toast("Approved and rejected payments can edit remark only.", {
                     icon: "ℹ️",
                     style: {
                       borderRadius: "10px",
@@ -401,7 +401,7 @@ const ClaimList = () => {
               onClick={async () => {
                 if (isLocked) {
                   toast.error(
-                    "Approved and rejected claims can't be deleted.",
+                    "Approved and rejected payments can't be deleted.",
                     {
                       icon: "🗑️",
                       style: {
@@ -419,13 +419,13 @@ const ClaimList = () => {
                   return;
                 }
 
-                const confirmDelete = window.confirm("Delete this claim?");
+                const confirmDelete = window.confirm("Delete this payment?");
 
                 if (!confirmDelete) return;
 
-                await dispatch(removeClaim(row.id));
-                dispatch(fetchClaims({ page, limit }));
-                toast.success("Claim deleted successfully");
+                await dispatch(removePayment(row.id));
+                dispatch(fetchPayments({ page, limit }));
+                toast.success("Payment deleted successfully");
               }}
               className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200"
             >
@@ -441,7 +441,7 @@ const ClaimList = () => {
     <div className="space-y-6">
       {/* HEADER */}
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-800">Claim Management</h1>
+        <h1 className="text-3xl font-bold text-gray-800">Payment Management</h1>
 
         <div className="flex gap-3">
           {/* EXPORT BUTTON (ONLY WHEN FILTER ACTIVE) */}
@@ -451,10 +451,10 @@ const ClaimList = () => {
             </Button>
           )}
 
-          <Link to="/admin/claims/add">
+          <Link to="/admin/payments/add">
             <Button>
               <Plus size={18} className="mr-1" />
-              Add Claim
+              Add Payment
             </Button>
           </Link>
         </div>
@@ -479,7 +479,7 @@ const ClaimList = () => {
 
           <div className="flex-1 min-w-[250px]">
             <Input
-              placeholder="Search claim..."
+              placeholder="Search payment..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -627,7 +627,7 @@ const ClaimList = () => {
         {loading ? (
           <div className="text-center py-8 text-gray-500">Loading...</div>
         ) : items.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">No claims found</div>
+          <div className="text-center py-8 text-gray-500">No payments found</div>
         ) : (
           <>
             <Table columns={columns} data={items} />
@@ -647,4 +647,4 @@ const ClaimList = () => {
   );
 };
 
-export default ClaimList;
+export default PaymentList;

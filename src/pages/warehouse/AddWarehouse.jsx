@@ -149,28 +149,41 @@ const AddWarehouse = () => {
   );
 
   /* ================= AUTO CALCULATIONS ================= */
-  const affidavitAmount = form.approved_storage_capacity * 50 || 0;
+  const affidavitAmount =
+    form.bank_solvency_affidavit_amount ??
+    (form.approved_storage_capacity * 50 || 0);
 
   const totalEMI =
-    (form.actual_storage_capacity * form.scheme_rate_amount) / 2 || 0;
+    form.total_emi ??
+    ((form.actual_storage_capacity * form.scheme_rate_amount) / 2 || 0);
 
   const solvencyBase = form.is_affidavit
     ? affidavitAmount
     : form.bank_solvency_certificate_amount || 0;
 
   const solvencyBalance =
+    form.bank_solvency_balance_amount ??
     solvencyBase - (form.bank_solvency_deduction_by_bill || 0);
 
-  const emiBalance = totalEMI - (form.emi_deduction_by_bill || 0);
+  const emiBalance =
+    form.balance_amount_emi ?? totalEMI - (form.emi_deduction_by_bill || 0);
 
   /* ================= HANDLERS ================= */
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    setForm({
+    const updatedForm = {
       ...form,
       [name]: name === "is_affidavit" ? value === "true" : value,
-    });
+    };
+
+    // ✅ If Certificate selected → reset values
+    if (name === "is_affidavit" && value === "false") {
+      updatedForm.bank_solvency_deduction_by_bill = 0;
+      updatedForm.bank_solvency_balance_amount = 0;
+    }
+
+    setForm(updatedForm);
   };
 
   const handleSubmit = async (e) => {
@@ -453,9 +466,12 @@ const AddWarehouse = () => {
               {form.is_affidavit ? (
                 <FormField label="Bank Solvency Affidavit Amount">
                   <Input
-                    value={affidavitAmount}
-                    readOnly
                     placeholder="Affidavit Amount (Auto)"
+                    value={
+                      form.bank_solvency_affidavit_amount ?? affidavitAmount
+                    }
+                    onChange={handleChange}
+                    name="bank_solvency_affidavit_amount"
                   />
                   {errors.affidavitAmount && (
                     <p className="text-red-500 text-sm mt-1">
@@ -495,9 +511,10 @@ const AddWarehouse = () => {
               </FormField>
               <FormField label="Balance Amount Bank Solvancy">
                 <Input
-                  value={solvencyBalance}
-                  readOnly
+                  value={form.bank_solvency_balance_amount ?? solvencyBalance}
+                  onChange={handleChange}
                   placeholder="Balance (Auto)"
+                  name="bank_solvency_balance_amount"
                 />
                 {errors.solvencyBalance && (
                   <p className="text-red-500 text-sm mt-1">
@@ -512,17 +529,22 @@ const AddWarehouse = () => {
           <Section title="EMI">
             <Grid>
               <FormField label="Total EMI">
-                <Input value={totalEMI} readOnly placeholder="Total EMI" />
+                <Input
+                  value={form.total_emi ?? totalEMI}
+                  onChange={handleChange}
+                  placeholder="Total EMI"
+                  name="total_emi"
+                />
                 {errors.totalEMI && (
                   <p className="text-red-500 text-sm mt-1">{errors.totalEMI}</p>
                 )}
               </FormField>
-              <FormField label="EMI Deduction">
+              <FormField label="EMI Deduction by Bill">
                 <Input
                   type="number"
                   name="emi_deduction_by_bill"
                   value={form.emi_deduction_by_bill}
-                  placeholder="EMI Deduction"
+                  placeholder="EMI Deduction by Bill"
                   onChange={handleChange}
                 />
                 {errors.emi_deduction_by_bill && (
@@ -532,7 +554,12 @@ const AddWarehouse = () => {
                 )}
               </FormField>
               <FormField label="EMI Balance">
-                <Input value={emiBalance} readOnly placeholder="EMI Balance" />
+                <Input
+                  value={form.balance_amount_emi ?? emiBalance}
+                  onChange={handleChange}
+                  placeholder="EMI Balance"
+                  name="balance_amount_emi"
+                />
                 {errors.emiBalance && (
                   <p className="text-red-500 text-sm mt-1">
                     {errors.emiBalance}
@@ -545,10 +572,10 @@ const AddWarehouse = () => {
           {/* PAN */}
           <Section title="PAN Details">
             <Grid>
-              <FormField label="PAN Holder">
+              <FormField label="PAN Card Holder">
                 <Input
                   name="pan_card_holder"
-                  placeholder="PAN Holder"
+                  placeholder="PAN Card Holder"
                   value={form.pan_card_holder}
                   onChange={handleChange}
                 />
@@ -558,10 +585,10 @@ const AddWarehouse = () => {
                   </p>
                 )}
               </FormField>
-              <FormField label="PAN Number">
+              <FormField label="PAN Card Number">
                 <Input
                   name="pan_card_number"
-                  placeholder="PAN Number"
+                  placeholder="PAN Card Number"
                   value={form.pan_card_number}
                   onChange={handleChange}
                 />
