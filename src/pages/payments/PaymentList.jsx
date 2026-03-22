@@ -19,7 +19,7 @@ import toast from "react-hot-toast";
 const PaymentList = () => {
   const dispatch = useDispatch();
   const { items, totalPages, page, limit, loading } = useSelector(
-    (state) => state.payments,
+    (state) => state.payments
   );
 
   /* ================= STATE ================= */
@@ -64,7 +64,7 @@ const PaymentList = () => {
         warehouse_type: warehouseType,
         from_date: fromDate,
         to_date: toDate,
-      }),
+      })
     );
   }, [
     dispatch,
@@ -82,20 +82,20 @@ const PaymentList = () => {
 
   /* ================= CASCADE LOGIC ================= */
   const filteredBranches = filterOptions.branches.filter(
-    (b) => !district || b.district_name === district,
+    (b) => !district || b.district_name === district
   );
 
   const filteredWarehouses = filterOptions.warehouseNames.filter(
     (w) =>
       (!district || w.district_name === district) &&
-      (!branch || w.branch_name === branch),
+      (!branch || w.branch_name === branch)
   );
 
   const filteredTypes = filterOptions.warehouseNames
     .filter(
       (w) =>
         (!district || w.district_name === district) &&
-        (!branch || w.branch_name === branch),
+        (!branch || w.branch_name === branch)
     )
     .map((w) => w.warehouse_type);
 
@@ -207,9 +207,13 @@ const PaymentList = () => {
 
       /* ================= REMOVE EMPTY APPROVED/REJECTED ================= */
 
-      const hasApproved = allPayments.some((c) => c.approved_by || c.approved_at);
+      const hasApproved = allPayments.some(
+        (c) => c.approved_by || c.approved_at
+      );
 
-      const hasRejected = allPayments.some((c) => c.rejected_by || c.rejected_at);
+      const hasRejected = allPayments.some(
+        (c) => c.rejected_by || c.rejected_at
+      );
 
       const cleanedData = allPayments.map((payment) => {
         const obj = { ...payment };
@@ -296,8 +300,8 @@ const PaymentList = () => {
         const maxLength = Math.max(
           key.length,
           ...formattedData.map((row) =>
-            row[key] ? row[key].toString().length : 0,
-          ),
+            row[key] ? row[key].toString().length : 0
+          )
         );
 
         return { wch: Math.min(maxLength + 4, 40) };
@@ -350,12 +354,14 @@ const PaymentList = () => {
     { key: "district_name", label: "District" },
     { key: "branch_name", label: "Branch" },
     { key: "warehouse_name", label: "Warehouse" },
-    { key: "rent_bill_number", label: "Bill No" },
-    {
-      key: "status",
-      label: "Status",
-      render: (value) => getStatusBadge(value),
-    },
+    { key: "warehouse_type", label: "Warehouse Type" },
+    { key: "commodity", label: "Commodity" },
+    { key: "depositers_name", label: "Depositer Name" },
+    // {
+    //   key: "status",
+    //   label: "Status",
+    //   render: (value) => getStatusBadge(value),
+    // },
     {
       key: "actions",
       label: "Actions",
@@ -377,18 +383,21 @@ const PaymentList = () => {
               to={`/admin/payments/edit/${row.id}`}
               onClick={() => {
                 if (isLocked) {
-                  toast("Approved and rejected payments can edit remark only.", {
-                    icon: "ℹ️",
-                    style: {
-                      borderRadius: "10px",
-                      background: "#FEF3C7",
-                      color: "#92400E",
-                      padding: "12px 16px",
-                      fontSize: "14px",
-                      fontWeight: "500",
-                      maxWidth: "fit-content",
-                    },
-                  });
+                  toast(
+                    "Approved and rejected payments can edit remark only.",
+                    {
+                      icon: "ℹ️",
+                      style: {
+                        borderRadius: "10px",
+                        background: "#FEF3C7",
+                        color: "#92400E",
+                        padding: "12px 16px",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        maxWidth: "fit-content",
+                      },
+                    }
+                  );
                 }
               }}
               className="p-2 rounded-lg bg-yellow-100 text-yellow-600 hover:bg-yellow-200"
@@ -414,7 +423,7 @@ const PaymentList = () => {
                         fontWeight: "500",
                         maxWidth: "fit-content",
                       },
-                    },
+                    }
                   );
                   return;
                 }
@@ -627,7 +636,9 @@ const PaymentList = () => {
         {loading ? (
           <div className="text-center py-8 text-gray-500">Loading...</div>
         ) : items.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">No payments found</div>
+          <div className="text-center py-8 text-gray-500">
+            No payments found
+          </div>
         ) : (
           <>
             <Table columns={columns} data={items} />

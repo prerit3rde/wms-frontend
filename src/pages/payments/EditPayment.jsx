@@ -15,7 +15,7 @@ const steps = [
   "Billing Details",
   "Scientific Capacity",
   "Deductions",
-  "Preview",
+  // "Preview",
   "Payment",
   "Remarks",
 ];
@@ -28,7 +28,8 @@ const EditPayment = () => {
   const { currentPayment, loading } = useSelector((state) => state.payments);
 
   const isLocked =
-    currentPayment?.status === "Approved" || currentPayment?.status === "Rejected";
+    currentPayment?.status === "Approved" ||
+    currentPayment?.status === "Rejected";
 
   const [currentStep, setCurrentStep] = useState(0);
 
@@ -55,9 +56,7 @@ const EditPayment = () => {
     commodity: "",
     rate: "",
     rent_bill_amount: "",
-    total_jv_amount: "",
     actual_passed_amount: "",
-    total_deduction_amount: "",
 
     scientific_capacity: "",
     number_of_days: "",
@@ -90,21 +89,22 @@ const EditPayment = () => {
   });
 
   useEffect(() => {
-    const totalJV = Number(formData.total_jv_amount || 0);
-    const actualPassed = Number(formData.actual_passed_amount || 0);
+    const billAmount = Number(formData.bill_amount || 0);
+    const actualPassed = billAmount;
 
-    const tds = totalJV * 0.1;
-    const deduction20 = totalJV * 0.2;
+    const tds = billAmount * 0.1;
+    const deduction20 = billAmount * 0.2;
 
-    const payToJVS = actualPassed - tds - deduction20;
+    const payToJVS = billAmount - tds - deduction20;
 
     setFormData((prev) => ({
       ...prev,
+      actual_passed_amount: actualPassed.toFixed(2),
       tds: tds.toFixed(2),
       deduction_20_percent: deduction20.toFixed(2),
       pay_to_jvs_amount: payToJVS.toFixed(2),
     }));
-  }, [formData.total_jv_amount, formData.actual_passed_amount]);
+  }, [formData.bill_amount]);
 
   /* ================= FETCH PAYMENT ================= */
   useEffect(() => {
@@ -142,20 +142,21 @@ const EditPayment = () => {
 
         rate: Number(formData.rate || 0),
         rent_bill_amount: Number(formData.rent_bill_amount || 0),
-        total_jv_amount: Number(formData.total_jv_amount || 0),
         actual_passed_amount: Number(formData.actual_passed_amount || 0),
-        total_deduction_amount: Number(formData.total_deduction_amount || 0),
+
+        bill_amount: Number(formData.bill_amount || 0),
+        actual_passed_amount: Number(formData.actual_passed_amount || 0),
 
         scientific_capacity: Number(formData.scientific_capacity || 0),
         number_of_days: Number(formData.number_of_days || 0),
         per_day_rate: Number(formData.per_day_rate || 0),
         rent_amount_on_scientific_capacity: Number(
-          formData.rent_amount_on_scientific_capacity || 0,
+          formData.rent_amount_on_scientific_capacity || 0
         ),
 
         tds: Number(formData.tds || 0),
         amount_deducted_against_gain_loss: Number(
-          formData.amount_deducted_against_gain_loss || 0,
+          formData.amount_deducted_against_gain_loss || 0
         ),
         emi_amount: Number(formData.emi_amount || 0),
         deduction_20_percent: Number(formData.deduction_20_percent || 0),
@@ -164,7 +165,7 @@ const EditPayment = () => {
         emi_fdr_interest: Number(formData.emi_fdr_interest || 0),
         gain_shortage_deducton: Number(formData.gain_shortage_deducton || 0),
         stock_shortage_deduction: Number(
-          formData.stock_shortage_deduction || 0,
+          formData.stock_shortage_deduction || 0
         ),
         bank_solvancy: Number(formData.bank_solvancy || 0),
         insurance: Number(formData.insurance || 0),
@@ -180,7 +181,7 @@ const EditPayment = () => {
         updateExistingPayment({
           id,
           data: payload,
-        }),
+        })
       );
 
       if (updateExistingPayment.fulfilled.match(result)) {
@@ -328,7 +329,7 @@ const EditPayment = () => {
 
             <FormField label="From Date">
               <Input
-                type="date"
+                type="text"
                 name="from_date"
                 value={formData.from_date}
                 onChange={handleChange}
@@ -338,7 +339,7 @@ const EditPayment = () => {
 
             <FormField label="To Date">
               <Input
-                type="date"
+                type="text"
                 name="to_date"
                 value={formData.to_date}
                 onChange={handleChange}
@@ -378,13 +379,12 @@ const EditPayment = () => {
               />
             </FormField>
 
-            <FormField label="Total JV Amount">
+            <FormField label="Bill Amount">
               <Input
                 type="number"
-                name="total_jv_amount"
-                value={formData.total_jv_amount}
+                name="bill_amount"
+                value={formData.bill_amount}
                 onChange={handleChange}
-                placeholder="Total JV Amount"
                 disabled={isLocked}
               />
             </FormField>
@@ -400,14 +400,12 @@ const EditPayment = () => {
               />
             </FormField>
 
-            <FormField label="Total Deduction Amount">
+            <FormField label="Depositers Name *">
               <Input
-                type="number"
-                name="total_deduction_amount"
-                value={formData.total_deduction_amount}
+                name="depositers_name"
+                value={formData.depositers_name}
                 onChange={handleChange}
-                placeholder="Total Deduction Amount"
-                disabled={isLocked}
+                placeholder="Depositers Name"
               />
             </FormField>
           </div>
@@ -615,13 +613,33 @@ const EditPayment = () => {
         )}
 
         {/* ================= STEP 5 ================= */}
-        {currentStep === 4 && (
+        {/* {currentStep === 4 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="Rent Bill Amount">
               <Input
                 disabled={isLocked}
                 value={formData.rent_bill_amount}
                 readOnly
+              />
+            </FormField>
+
+            <FormField label="Bill Amount">
+              <Input
+                type="number"
+                name="bill_amount"
+                value={formData.bill_amount}
+                onChange={handleChange}
+                disabled={isLocked}
+              />
+            </FormField>
+
+            <FormField label="Actual Passed Amount">
+              <Input
+                type="number"
+                name="actual_passed_amount"
+                value={formData.actual_passed_amount}
+                className="bg-gray-100"
+                disabled
               />
             </FormField>
 
@@ -647,9 +665,9 @@ const EditPayment = () => {
               />
             </FormField>
           </div>
-        )}
+        )} */}
 
-        {currentStep === 5 && (
+        {currentStep === 4 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="Payment By">
               <Input
@@ -663,7 +681,7 @@ const EditPayment = () => {
 
             <FormField label="Payment Date">
               <Input
-                type="date"
+                type="text"
                 name="payment_date"
                 value={formData.payment_date}
                 onChange={handleChange}
@@ -684,7 +702,7 @@ const EditPayment = () => {
         )}
 
         {/* ================= STEP 6 ================= */}
-        {currentStep === 6 && (
+        {currentStep === 5 && (
           <FormField label="Remarks">
             <textarea
               name="remarks"

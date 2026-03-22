@@ -51,17 +51,17 @@ const ViewPayment = () => {
     dispatch(fetchPaymentById(id));
   }, [dispatch, id]);
 
-  const handleApprove = async () => {
-    await dispatch(approveExistingPayment(id));
-    dispatch(fetchPaymentById(id));
-    toast.success("Payment approved successfully!");
-  };
+  // const handleApprove = async () => {
+  //   await dispatch(approveExistingPayment(id));
+  //   dispatch(fetchPaymentById(id));
+  //   toast.success("Payment approved successfully!");
+  // };
 
-  const handleReject = async () => {
-    await dispatch(rejectExistingPayment(id));
-    dispatch(fetchPaymentById(id));
-    toast.success("Payment rejected successfully!");
-  };
+  // const handleReject = async () => {
+  //   await dispatch(rejectExistingPayment(id));
+  //   dispatch(fetchPaymentById(id));
+  //   toast.success("Payment rejected successfully!");
+  // };
 
   const handlePrint = () => {
     window.print();
@@ -87,7 +87,7 @@ const ViewPayment = () => {
         <div className="flex gap-3">
           <Button onClick={handlePrint}>Print</Button>
 
-          <Button
+          {/* <Button
             variant="success"
             disabled={currentPayment.status !== "Pending"}
             onClick={handleApprove}
@@ -101,7 +101,7 @@ const ViewPayment = () => {
             onClick={handleReject}
           >
             Reject
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -129,15 +129,18 @@ const ViewPayment = () => {
           <Field label="Bill Type" value={currentPayment.bill_type} />
           <Field label="Month" value={currentPayment.month} />
           <Field label="Financial Year" value={currentPayment.financial_year} />
-          <Field label="From Date" value={formatDate(currentPayment.from_date)} />
-          <Field label="To Date" value={formatDate(currentPayment.to_date)} />
+
+          {/* DATE (NOW STRING SAFE) */}
+          <Field label="From Date" value={currentPayment.from_date} />
+          <Field label="To Date" value={currentPayment.to_date} />
+
           <Field label="Commodity" value={currentPayment.commodity} />
           <Field label="Rate" value={currentPayment.rate} />
           <Field label="Rent Bill Amount" value={currentPayment.rent_bill_amount} />
-          <Field label="Total JV Amount" value={currentPayment.total_jv_amount} />
+          <Field label="Bill Amount" value={currentPayment.bill_amount} />
           <Field label="Actual Passed Amount" value={currentPayment.actual_passed_amount} />
-          <Field label="Total Deduction Amount" value={currentPayment.total_deduction_amount} />
-        </Section>
+          <Field label="Depositer Name" value={currentPayment.depositers_name} />
+        </Section> 
 
         {/* Scientific Capacity */}
         <Section title="Scientific Capacity">
@@ -152,16 +155,18 @@ const ViewPayment = () => {
           <Field label="TDS" value={currentPayment.tds} />
           <Field label="Amount Deducted Against Gain/Loss" value={currentPayment.amount_deducted_against_gain_loss} />
           <Field label="EMI Amount" value={currentPayment.emi_amount} />
-          <Field label="20% Deduction Amount" value={currentPayment.deduction_20_percent} />
+          <Field label="20% Deduction" value={currentPayment.deduction_20_percent} />
           <Field label="Penalty" value={currentPayment.penalty} />
           <Field label="Medicine" value={currentPayment.medicine} />
           <Field label="EMI FDR Interest" value={currentPayment.emi_fdr_interest} />
           <Field label="Gain Shortage Deduction" value={currentPayment.gain_shortage_deducton} />
           <Field label="Stock Shortage Deduction" value={currentPayment.stock_shortage_deduction} />
-          <Field label="Bank Solvancy" value={currentPayment.bank_solvancy} />
+          <Field label="Bank Solvency" value={currentPayment.bank_solvancy} />
           <Field label="Insurance" value={currentPayment.insurance} />
           <Field label="Other Deduction Amount" value={currentPayment.other_deduction_amount} />
           <Field label="Other Deduction Reason" value={currentPayment.other_deductions_reason} />
+
+          {/* MOVED HERE (correct position like AddPayment) */}
           <Field label="Security Fund Amount" value={currentPayment.security_fund_amount} />
         </Section>
 
@@ -169,7 +174,7 @@ const ViewPayment = () => {
         <Section title="Payment Details">
           <Field label="Pay To JVS Amount" value={currentPayment.pay_to_jvs_amount} />
           <Field label="Payment By" value={currentPayment.payment_by} />
-          <Field label="Payment Date" value={formatDate(currentPayment.payment_date)} />
+          <Field label="Payment Date" value={currentPayment.payment_date} />
           <Field label="QTR" value={currentPayment.qtr} />
           <Field label="Net Amount Payable" value={currentPayment.net_amount_payable} />
         </Section>

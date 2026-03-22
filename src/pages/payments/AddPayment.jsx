@@ -627,6 +627,7 @@ const AddPayment = () => {
                 value={formData.actual_passed_amount}
                 className="bg-gray-100"
                 placeholder="Actual Passed Amount"
+                onChange={handleChange}
               />
             </FormField>
 
@@ -658,7 +659,7 @@ const AddPayment = () => {
               <Input
                 name="number_of_days"
                 value={formData.number_of_days}
-                readOnly
+                onChange={handleChange}
                 className="bg-gray-100"
               />
             </FormField>
@@ -693,7 +694,7 @@ const AddPayment = () => {
                 type="number"
                 name="tds"
                 value={formData.tds}
-                readOnly
+                onChange={handleChange}
                 placeholder="TDS"
               />
             </FormField>
@@ -723,7 +724,7 @@ const AddPayment = () => {
                 type="number"
                 name="deduction_20_percent"
                 value={formData.deduction_20_percent}
-                readOnly
+                onChange={handleChange}
                 placeholder="20% Deduction"
               />
             </FormField>
@@ -823,7 +824,7 @@ const AddPayment = () => {
                 type="number"
                 name="pay_to_jvs_amount"
                 value={formData.pay_to_jvs_amount}
-                readOnly
+                onChange={handleChange}
                 placeholder="Pay To JVS Amount"
               />
             </FormField>
@@ -879,7 +880,7 @@ const AddPayment = () => {
             <FormField label="Rent Bill Amount">
               <Input
                 value={formData.rent_bill_amount}
-                readOnly
+                onChange={handleChange}
                 placeholder="Rent Bill Amount"
               />
             </FormField>
@@ -887,7 +888,7 @@ const AddPayment = () => {
             <FormField label="Total Deduction Amount">
               <Input
                 value={formData.total_deduction_amount}
-                readOnly
+                onChange={handleChange}
                 placeholder="Total Deduction Amount"
               />
             </FormField>

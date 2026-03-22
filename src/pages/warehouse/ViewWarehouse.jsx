@@ -59,8 +59,8 @@ const ViewWarehouse = () => {
             label="Warehouse Name"
             value={currentWarehouse.warehouse_name}
           />
-          <Field label="Owner" value={currentWarehouse.warehouse_owner_name} />
-          <Field label="Type" value={currentWarehouse.warehouse_type} />
+          <Field label="Warehouse Owner" value={currentWarehouse.warehouse_owner_name} />
+          <Field label="Warehouse Type" value={currentWarehouse.warehouse_type} />
           <Field label="Warehouse No" value={currentWarehouse.warehouse_no} />
           <Field label="GST No" value={currentWarehouse.gst_no} />
         </Section>
@@ -68,34 +68,34 @@ const ViewWarehouse = () => {
         <Section title="Scheme & Capacity">
           <Field label="Scheme" value={currentWarehouse.scheme} />
           <Field
-            label="Scheme Rate"
+            label="Scheme Rate Amount"
             value={currentWarehouse.scheme_rate_amount}
           />
           <Field
-            label="Actual Capacity"
+            label="Actual Storage Capacity"
             value={currentWarehouse.actual_storage_capacity}
           />
           <Field
-            label="Approved Capacity"
+            label="Approved Storage Capacity"
             value={currentWarehouse.approved_storage_capacity}
           />
         </Section>
 
         <Section title="Bank Solvency">
           <Field
-            label="Affidavit Amount"
+            label="Bank Solvency Affidavit Amount"
             value={currentWarehouse.bank_solvency_affidavit_amount}
           />
           <Field
-            label="Certificate Amount"
+            label="Bank Solvency Certificate Amount"
             value={currentWarehouse.bank_solvency_certificate_amount}
           />
           <Field
-            label="Deduction"
+            label="Bank Solvency Deduction by Bill"
             value={currentWarehouse.bank_solvency_deduction_by_bill}
           />
           <Field
-            label="Balance"
+            label="Balance Amount Bank Solvancy"
             value={currentWarehouse.bank_solvency_balance_amount}
           />
         </Section>
@@ -103,7 +103,7 @@ const ViewWarehouse = () => {
         <Section title="EMI">
           <Field label="Total EMI" value={currentWarehouse.total_emi} />
           <Field
-            label="EMI Deduction"
+            label="EMI Deduction by Bill"
             value={currentWarehouse.emi_deduction_by_bill}
           />
           <Field
@@ -113,8 +113,8 @@ const ViewWarehouse = () => {
         </Section>
 
         <Section title="PAN Details">
-          <Field label="PAN Holder" value={currentWarehouse.pan_card_holder} />
-          <Field label="PAN Number" value={currentWarehouse.pan_card_number} />
+          <Field label="PAN Card Holder" value={currentWarehouse.pan_card_holder} />
+          <Field label="PAN Card Number" value={currentWarehouse.pan_card_number} />
         </Section>
       </Card>
     </div>
