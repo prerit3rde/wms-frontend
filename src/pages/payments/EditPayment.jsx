@@ -88,20 +88,32 @@ const EditPayment = () => {
     remarks: "",
   });
 
+  const [isTdsManual, setIsTdsManual] = useState(false);
+  const [isDeductionManual, setIsDeductionManual] = useState(false);
+
   useEffect(() => {
     const billAmount = Number(formData.bill_amount || 0);
     const actualPassed = billAmount;
 
-    const tds = billAmount * 0.1;
-    const deduction20 = billAmount * 0.2;
+    let tds = formData.tds;
+    let deduction20 = formData.deduction_20_percent;
 
-    const payToJVS = billAmount - tds - deduction20;
+    // ONLY AUTO CALCULATE IF NOT MANUAL
+    if (!isTdsManual) {
+      tds = (billAmount * 0.1).toFixed(2);
+    }
+
+    if (!isDeductionManual) {
+      deduction20 = (billAmount * 0.2).toFixed(2);
+    }
+
+    const payToJVS = billAmount - Number(tds || 0) - Number(deduction20 || 0);
 
     setFormData((prev) => ({
       ...prev,
       actual_passed_amount: actualPassed.toFixed(2),
-      tds: tds.toFixed(2),
-      deduction_20_percent: deduction20.toFixed(2),
+      tds: Number(tds || 0).toFixed(2),
+      deduction_20_percent: Number(deduction20 || 0).toFixed(2),
       pay_to_jvs_amount: payToJVS.toFixed(2),
     }));
   }, [formData.bill_amount]);
@@ -125,6 +137,12 @@ const EditPayment = () => {
   }, [currentPayment]);
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    // detect manual override
+    if (name === "tds") setIsTdsManual(true);
+    if (name === "deduction_20_percent") setIsDeductionManual(true);
+
     setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
@@ -151,12 +169,12 @@ const EditPayment = () => {
         number_of_days: Number(formData.number_of_days || 0),
         per_day_rate: Number(formData.per_day_rate || 0),
         rent_amount_on_scientific_capacity: Number(
-          formData.rent_amount_on_scientific_capacity || 0
+          formData.rent_amount_on_scientific_capacity || 0,
         ),
 
         tds: Number(formData.tds || 0),
         amount_deducted_against_gain_loss: Number(
-          formData.amount_deducted_against_gain_loss || 0
+          formData.amount_deducted_against_gain_loss || 0,
         ),
         emi_amount: Number(formData.emi_amount || 0),
         deduction_20_percent: Number(formData.deduction_20_percent || 0),
@@ -165,7 +183,7 @@ const EditPayment = () => {
         emi_fdr_interest: Number(formData.emi_fdr_interest || 0),
         gain_shortage_deducton: Number(formData.gain_shortage_deducton || 0),
         stock_shortage_deduction: Number(
-          formData.stock_shortage_deduction || 0
+          formData.stock_shortage_deduction || 0,
         ),
         bank_solvancy: Number(formData.bank_solvancy || 0),
         insurance: Number(formData.insurance || 0),
@@ -181,7 +199,7 @@ const EditPayment = () => {
         updateExistingPayment({
           id,
           data: payload,
-        })
+        }),
       );
 
       if (updateExistingPayment.fulfilled.match(result)) {

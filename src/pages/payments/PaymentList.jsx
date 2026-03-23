@@ -19,7 +19,7 @@ import toast from "react-hot-toast";
 const PaymentList = () => {
   const dispatch = useDispatch();
   const { items, totalPages, page, limit, loading } = useSelector(
-    (state) => state.payments
+    (state) => state.payments,
   );
 
   /* ================= STATE ================= */
@@ -64,7 +64,7 @@ const PaymentList = () => {
         warehouse_type: warehouseType,
         from_date: fromDate,
         to_date: toDate,
-      })
+      }),
     );
   }, [
     dispatch,
@@ -82,20 +82,20 @@ const PaymentList = () => {
 
   /* ================= CASCADE LOGIC ================= */
   const filteredBranches = filterOptions.branches.filter(
-    (b) => !district || b.district_name === district
+    (b) => !district || b.district_name === district,
   );
 
   const filteredWarehouses = filterOptions.warehouseNames.filter(
     (w) =>
       (!district || w.district_name === district) &&
-      (!branch || w.branch_name === branch)
+      (!branch || w.branch_name === branch),
   );
 
   const filteredTypes = filterOptions.warehouseNames
     .filter(
       (w) =>
         (!district || w.district_name === district) &&
-        (!branch || w.branch_name === branch)
+        (!branch || w.branch_name === branch),
     )
     .map((w) => w.warehouse_type);
 
@@ -208,11 +208,11 @@ const PaymentList = () => {
       /* ================= REMOVE EMPTY APPROVED/REJECTED ================= */
 
       const hasApproved = allPayments.some(
-        (c) => c.approved_by || c.approved_at
+        (c) => c.approved_by || c.approved_at,
       );
 
       const hasRejected = allPayments.some(
-        (c) => c.rejected_by || c.rejected_at
+        (c) => c.rejected_by || c.rejected_at,
       );
 
       const cleanedData = allPayments.map((payment) => {
@@ -300,8 +300,8 @@ const PaymentList = () => {
         const maxLength = Math.max(
           key.length,
           ...formattedData.map((row) =>
-            row[key] ? row[key].toString().length : 0
-          )
+            row[key] ? row[key].toString().length : 0,
+          ),
         );
 
         return { wch: Math.min(maxLength + 4, 40) };
@@ -396,7 +396,7 @@ const PaymentList = () => {
                         fontWeight: "500",
                         maxWidth: "fit-content",
                       },
-                    }
+                    },
                   );
                 }
               }}
@@ -423,7 +423,7 @@ const PaymentList = () => {
                         fontWeight: "500",
                         maxWidth: "fit-content",
                       },
-                    }
+                    },
                   );
                   return;
                 }
@@ -454,11 +454,11 @@ const PaymentList = () => {
 
         <div className="flex gap-3">
           {/* EXPORT BUTTON (ONLY WHEN FILTER ACTIVE) */}
-          {isFilterActive && (
+          {/* {isFilterActive && (
             <Button variant="success" onClick={handleExport}>
               Export Excel
             </Button>
-          )}
+          )} */}
 
           <Link to="/admin/payments/add">
             <Button>
@@ -472,7 +472,7 @@ const PaymentList = () => {
       {/* FILTER SECTION */}
       <Card className="p-6 space-y-4">
         {/* TOP ROW */}
-        <div className="flex flex-wrap gap-4 items-center">
+        <div className="flex flex-wrap gap-4 items-center items-end">
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition
@@ -498,25 +498,28 @@ const PaymentList = () => {
           </div>
 
           {/* DATE FILTER (NOW TOP ROW) */}
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(e) => {
-              setFromDate(e.target.value);
-              dispatch(setPage(1));
-            }}
-            className="px-4 py-2 border rounded-lg"
-          />
-
-          <input
-            type="date"
-            value={toDate}
-            onChange={(e) => {
-              setToDate(e.target.value);
-              dispatch(setPage(1));
-            }}
-            className="px-4 py-2 border rounded-lg"
-          />
+          <FormField label="From Date">
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => {
+                setFromDate(e.target.value);
+                dispatch(setPage(1));
+              }}
+              className="px-4 py-2 border rounded-lg"
+            />
+          </FormField>
+          <FormField label="To Date">
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => {
+                setToDate(e.target.value);
+                dispatch(setPage(1));
+              }}
+              className="px-4 py-2 border rounded-lg"
+            />
+          </FormField>
 
           {/* SORT */}
           <select
@@ -529,9 +532,9 @@ const PaymentList = () => {
           >
             <option value="date_desc">Newest</option>
             <option value="date_asc">Oldest</option>
-            <option value="status_Pending">Pending</option>
+            {/* <option value="status_Pending">Pending</option>
             <option value="status_Approved">Approved</option>
-            <option value="status_Rejected">Rejected</option>
+            <option value="status_Rejected">Rejected</option> */}
           </select>
 
           <button
@@ -657,5 +660,13 @@ const PaymentList = () => {
     </div>
   );
 };
+
+const FormField = ({ label, children, error }) => (
+  <div className="flex flex-col">
+    <label className="text-sm font-medium mb-2 text-gray-700">{label}</label>
+    {children}
+    {error && <span className="text-red-500 text-sm mt-1">{error}</span>}
+  </div>
+);
 
 export default PaymentList;

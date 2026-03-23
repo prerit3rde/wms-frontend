@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchWarehouses,
@@ -14,6 +14,7 @@ import Table from "../../components/global/Table";
 import Input from "../../components/global/Input";
 import Pagination from "../../components/global/Pagination";
 import toast from "react-hot-toast";
+import * as XLSX from "xlsx";
 
 const WarehouseList = () => {
   const dispatch = useDispatch();
@@ -144,7 +145,6 @@ const WarehouseList = () => {
      TABLE COLUMNS
   =============================== */
   const columns = [
-    { key: "id", label: "ID" },
     { key: "district_name", label: "District" },
     { key: "branch_name", label: "Branch" },
     { key: "warehouse_name", label: "Warehouse Name" },
@@ -189,6 +189,85 @@ const WarehouseList = () => {
     },
   ];
 
+  const [previewData, setPreviewData] = useState([]);
+  const [showPreview, setShowPreview] = useState(false);
+
+  const fileInputRef = useRef(null);
+
+  const fieldLabels = {
+    district_name: "District",
+    branch_name: "Branch",
+    warehouse_name: "Warehouse Name",
+    warehouse_owner_name: "Warehouse Owner",
+    warehouse_type: "Warehouse Type",
+    warehouse_no: "Warehouse No",
+    gst_no: "GST No",
+    scheme: "Scheme",
+    scheme_rate_amount: "Scheme Rate Amount",
+    actual_storage_capacity: "Actual Storage Capacity",
+    approved_storage_capacity: "Approved Storage Capacity",
+    bank_solvency_affidavit_amount: "Bank Solvency Affidavit Amount",
+    bank_solvency_certificate_amount: "Bank Solvency Certificate Amount",
+    bank_solvency_deduction_by_bill: "Bank Solvency Deduction by Bill",
+    bank_solvency_balance_amount: "Balance Amount Bank Solvancy",
+    total_emi: "Total EMI",
+    emi_deduction_by_bill: "EMI Deduction by Bill",
+    balance_amount_emi: "EMI Balance",
+    pan_card_holder: "PAN Card Holder",
+    pan_card_number: "PAN Card Number",
+  };
+
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = (evt) => {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+      setPreviewData(jsonData);
+      setShowPreview(true);
+
+      // ✅ RESET INPUT (IMPORTANT)
+      // e.target.value = null;
+      fileInputRef.current.value = "";
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleBulkInsert = async () => {
+    try {
+      await axios.post("/warehouses/bulk-insert", {
+        data: previewData,
+      });
+
+      toast.success("Warehouses imported successfully!");
+
+      setShowPreview(false);
+      setPreviewData([]);
+
+      // ✅ RESET FILE INPUT AGAIN
+      if (fileInputRef.current) {
+        fileInputRef.current.value = null;
+      }
+
+      dispatch(fetchWarehouses({ page, limit }));
+    } catch (error) {
+      toast.error("Import failed!");
+    }
+  };
+
+  const previewColumns = Object.keys(previewData[0] || {}).map((key) => ({
+    key,
+    label: fieldLabels[key] || key,
+  }));
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -196,13 +275,54 @@ const WarehouseList = () => {
         <h1 className="text-3xl font-bold text-gray-800">
           Warehouse Management
         </h1>
-        <Link to="/admin/warehouses/add">
-          <Button>
-            <Plus size={18} className="mr-1" />
-            Add Warehouse
+        <div className="flex gap-2">
+          {/* IMPORT */}
+          <input
+            type="file"
+            accept=".xlsx,.csv"
+            ref={fileInputRef}
+            onChange={handleImport}
+            className="hidden"
+          />
+
+          <Button
+            variant="secondary"
+            onClick={() => fileInputRef.current.click()}
+          >
+            Import Excel
           </Button>
-        </Link>
+
+          {/* ADD */}
+          <Link to="/admin/warehouses/add">
+            <Button>
+              <Plus size={18} className="mr-1" />
+              Add Warehouse
+            </Button>
+          </Link>
+        </div>
       </div>
+
+      {showPreview && (
+        <Card className="p-6 max-w-[1217px] overflow-x-auto overflow-y-hidden whitespace-nowrap w-full">
+          <h2 className="text-xl font-semibold mb-4">Preview Imported Data</h2>
+
+          <Table columns={previewColumns} data={previewData} />
+
+          <div className="mt-4 flex gap-2">
+            <Button onClick={handleBulkInsert}>Insert All</Button>
+
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowPreview(false);
+                setPreviewData([]);
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Controls */}
       <Card className="p-6 space-y-4">
@@ -246,10 +366,11 @@ const WarehouseList = () => {
           >
             <option value="date_desc">Newest</option>
             <option value="date_asc">Oldest</option>
-            <option value="district_asc">District A-Z</option>
+            <option value="imported">Imported</option>
+            {/* <option value="district_asc">District A-Z</option>
             <option value="district_desc">District Z-A</option>
             <option value="name_asc">Warehouse A-Z</option>
-            <option value="name_desc">Warehouse Z-A</option>
+            <option value="name_desc">Warehouse Z-A</option> */}
           </select>
 
           {/* Reset (Active Color) */}

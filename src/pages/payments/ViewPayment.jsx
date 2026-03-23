@@ -182,18 +182,18 @@ const ViewPayment = () => {
         {/* Remarks */}
         <Section title="Remarks">
           <Field label="Remarks" value={currentPayment.remarks} />
-          <Field label="Status" value={currentPayment.status} />
+          {/* <Field label="Status" value={currentPayment.status} /> */}
         </Section>
 
         {/* Approval Info */}
-        <Section title="Approval / Rejection Information">
+        {/* <Section title="Approval / Rejection Information">
           <Field label="Approved By" value={currentPayment.approved_by_name} />
           <Field label="Approved At" value={formatDate(currentPayment.approved_at)} />
           <Field label="Rejected By" value={currentPayment.rejected_by_name} />
           <Field label="Rejected At" value={formatDate(currentPayment.rejected_at)} />
           <Field label="Created At" value={formatDate(currentPayment.created_at)} />
           <Field label="Updated At" value={formatDate(currentPayment.updated_at)} />
-        </Section>
+        </Section> */}
 
       </div>
     </div>
