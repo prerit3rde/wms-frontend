@@ -1,12 +1,12 @@
 import * as XLSX from "xlsx";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchPayments,
   removePayment,
   setPage,
 } from "../../redux/slices/paymentsSlice";
-import { Eye, Pencil, Trash2, Plus, Filter } from "lucide-react";
+import { Eye, Pencil, Trash2, Plus, Filter, Import } from "lucide-react";
 import { Link } from "react-router-dom";
 import axios from "../../services/axios";
 import Button from "../../components/global/Button";
@@ -42,11 +42,11 @@ const PaymentList = () => {
   });
 
   /* ================= FETCH FILTER OPTIONS ================= */
+  const fetchFilters = async () => {
+    const res = await axios.get("/payments/filters");
+    setFilterOptions(res.data.data);
+  };
   useEffect(() => {
-    const fetchFilters = async () => {
-      const res = await axios.get("/payments/filters");
-      setFilterOptions(res.data.data);
-    };
     fetchFilters();
   }, []);
 
@@ -446,6 +446,135 @@ const PaymentList = () => {
     },
   ];
 
+  const [previewData, setPreviewData] = useState([]);
+  const [showPreview, setShowPreview] = useState(false);
+
+  const fileInputRef = useRef(null);
+
+  const fieldLabels = {
+    // ================= WAREHOUSE =================
+    district_name: "District",
+    branch_name: "Branch",
+    warehouse_name: "Warehouse Name",
+    warehouse_owner_name: "Warehouse Owner",
+    warehouse_type: "Warehouse Type",
+    warehouse_no: "Warehouse No",
+    gst_no: "GST No",
+    scheme: "Scheme",
+    scheme_rate_amount: "Scheme Rate Amount",
+    actual_storage_capacity: "Actual Storage Capacity",
+    approved_storage_capacity: "Approved Storage Capacity",
+    bank_solvency_affidavit_amount: "Bank Solvency Affidavit Amount",
+    bank_solvency_certificate_amount: "Bank Solvency Certificate Amount",
+    bank_solvency_deduction_by_bill: "Bank Solvency Deduction by Bill",
+    bank_solvency_balance_amount: "Balance Amount Bank Solvancy",
+    total_emi: "Total EMI",
+    emi_deduction_by_bill: "EMI Deduction by Bill",
+    balance_amount_emi: "EMI Balance",
+    pan_card_holder: "PAN Card Holder",
+    pan_card_number: "PAN Card Number",
+
+    // ================= PAYMENT =================
+    rent_bill_number: "Rent Bill Number",
+    bill_type: "Bill Type",
+    month: "Month",
+    financial_year: "Financial Year",
+    from_date: "From Date",
+    to_date: "To Date",
+    commodity: "Commodity",
+
+    rate: "Rate",
+    rent_bill_amount: "Rent Bill Amount",
+    bill_amount: "Bill Amount",
+    actual_passed_amount: "Actual Passed Amount",
+    depositers_name: "Depositers Name",
+
+    scientific_capacity: "Scientific Capacity",
+    number_of_days: "Number of Days",
+    per_day_rate: "Per Day Rate",
+    rent_amount_on_scientific_capacity: "Rent Amount On Scientific Capacity",
+
+    tds: "TDS",
+    amount_deducted_against_gain_loss: "Amount Deducted Against Gain/Loss",
+    emi_amount: "EMI Amount",
+    deduction_20_percent: "20% Deduction",
+    penalty: "Penalty",
+    medicine: "Medicine",
+    emi_fdr_interest: "EMI FDR Interest",
+    gain_shortage_deduction: "Gain Shortage Deduction",
+    stock_shortage_deduction: "Stock Shortage Deduction",
+    bank_solvancy: "Bank Solvancy",
+    insurance: "Insurance",
+    other_deduction_amount: "Other Deduction Amount",
+    other_deductions_reason: "Other Deduction Reason",
+
+    pay_to_jvs_amount: "Pay To JVS Amount",
+    security_fund_amount: "Security Fund Amount",
+
+    payment_by: "Payment By",
+    payment_date: "Payment Date",
+    qtr: "QTR",
+    remarks: "Remarks",
+  };
+
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = (evt) => {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+      setPreviewData(jsonData);
+      setShowPreview(true);
+
+      // ✅ RESET INPUT (IMPORTANT)
+      // e.target.value = null;
+      fileInputRef.current.value = "";
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleBulkInsert = async () => {
+    try {
+      const res = await axios.post("/payments/bulk-insert", {
+        data: previewData,
+      });
+
+      // ✅ show backend message
+      toast.success(res.data.message || "Payment imported successfully!");
+
+      // ✅ reset UI
+      setShowPreview(false);
+      setPreviewData([]);
+
+      // ✅ reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = null;
+      }
+
+      // ❗ IMPORTANT: refresh PAYMENTS (not warehouses)
+      dispatch(fetchPayments({ page, limit }));
+
+      // 🔥 FIX: refresh filters ALSO
+      await fetchFilters();
+    } catch (error) {
+      // ✅ show actual backend error
+      toast.error(error.response?.data?.message || "Import failed!");
+    }
+  };
+
+  const previewColumns = Object.keys(previewData[0] || {}).map((key) => ({
+    key,
+    label: fieldLabels[key] || key,
+  }));
+
   return (
     <div className="space-y-6">
       {/* HEADER */}
@@ -459,6 +588,23 @@ const PaymentList = () => {
               Export Excel
             </Button>
           )} */}
+
+          {/* IMPORT */}
+          <input
+            type="file"
+            accept=".xlsx,.csv"
+            ref={fileInputRef}
+            onChange={handleImport}
+            className="hidden"
+          />
+
+          <Button
+            variant="secondary"
+            onClick={() => fileInputRef.current.click()}
+            className="flex gap-2"
+          >
+            <Import size={16} /> Import Payments
+          </Button>
 
           <Link to="/admin/payments/add">
             <Button>
@@ -475,7 +621,7 @@ const PaymentList = () => {
         <div className="flex flex-wrap gap-4 items-center items-end">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition
               ${
                 showFilters
                   ? "bg-blue-600 text-white border-blue-600"
@@ -506,7 +652,7 @@ const PaymentList = () => {
                 setFromDate(e.target.value);
                 dispatch(setPage(1));
               }}
-              className="px-4 py-2 border rounded-lg"
+              className="px-4 py-2 border rounded-lg cursor-pointer"
             />
           </FormField>
           <FormField label="To Date">
@@ -517,7 +663,7 @@ const PaymentList = () => {
                 setToDate(e.target.value);
                 dispatch(setPage(1));
               }}
-              className="px-4 py-2 border rounded-lg"
+              className="px-4 py-2 border rounded-lg cursor-pointer"
             />
           </FormField>
 
@@ -528,10 +674,11 @@ const PaymentList = () => {
               setSortOption(e.target.value);
               dispatch(setPage(1));
             }}
-            className="px-4 py-2 border rounded-lg"
+            className="px-4 py-2 border rounded-lg cursor-pointer"
           >
             <option value="date_desc">Newest</option>
             <option value="date_asc">Oldest</option>
+            <option value="imported">Imported</option>
             {/* <option value="status_Pending">Pending</option>
             <option value="status_Approved">Approved</option>
             <option value="status_Rejected">Rejected</option> */}
@@ -539,7 +686,7 @@ const PaymentList = () => {
 
           <button
             onClick={handleReset}
-            className={`px-4 py-2 rounded-lg transition ${
+            className={`px-4 py-2 rounded-lg cursor-pointer cursor-pointer transition ${
               isFilterActive
                 ? "bg-blue-600 text-white"
                 : "bg-gray-200 text-gray-600"
@@ -551,7 +698,7 @@ const PaymentList = () => {
 
         {/* CASCADING PANEL */}
         <div
-          className={`transition-all duration-500 overflow-hidden ${
+          className={`transition-all duration-500 overflow-hidden cursor-pointer ${
             showFilters ? "max-h-[400px] opacity-100 mt-4" : "max-h-0 opacity-0"
           }`}
         >
@@ -633,6 +780,28 @@ const PaymentList = () => {
           </div>
         </div>
       </Card>
+
+      {showPreview && (
+        <Card className="p-6 max-w-[1217px] overflow-x-auto overflow-y-hidden whitespace-nowrap w-full">
+          <h2 className="text-xl font-semibold mb-4">Preview Imported Data</h2>
+
+          <Table columns={previewColumns} data={previewData} />
+
+          <div className="mt-4 flex gap-2">
+            <Button onClick={handleBulkInsert}>Insert All</Button>
+
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowPreview(false);
+                setPreviewData([]);
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* TABLE */}
       <Card>

@@ -5,7 +5,7 @@ import {
   deleteWarehouse,
   setPage,
 } from "../../redux/slices/warehouseSlice";
-import { Eye, Pencil, Trash2, Plus, Filter } from "lucide-react";
+import { Eye, Pencil, Trash2, Plus, Filter, Import } from "lucide-react";
 import { Link } from "react-router-dom";
 import axios from "../../services/axios";
 import Button from "../../components/global/Button";
@@ -288,8 +288,9 @@ const WarehouseList = () => {
           <Button
             variant="secondary"
             onClick={() => fileInputRef.current.click()}
+            className="flex gap-2"
           >
-            Import Excel
+            <Import size={16} /> Import Warehouses
           </Button>
 
           {/* ADD */}
@@ -331,7 +332,7 @@ const WarehouseList = () => {
           {/* Filter Button */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition
               ${
                 showFilters
                   ? "bg-blue-600 text-white border-blue-600"
@@ -362,7 +363,7 @@ const WarehouseList = () => {
               setSortOption(e.target.value);
               dispatch(setPage(1));
             }}
-            className="px-4 py-2 border rounded-lg"
+            className="px-4 py-2 border rounded-lg cursor-pointer"
           >
             <option value="date_desc">Newest</option>
             <option value="date_asc">Oldest</option>
@@ -376,7 +377,7 @@ const WarehouseList = () => {
           {/* Reset (Active Color) */}
           <button
             onClick={handleReset}
-            className={`px-4 py-2 rounded-lg transition
+            className={`px-4 py-2 rounded-lg cursor-pointer transition
               ${
                 isFilterActive
                   ? "bg-blue-600 text-white hover:bg-blue-700"

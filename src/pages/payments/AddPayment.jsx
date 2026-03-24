@@ -130,10 +130,9 @@ const AddPayment = () => {
     warehouse_owner_name: "",
     warehouse_type: "",
     warehouse_no: "",
-    sr_no: "",
+    gst_no: "",
     pan_card_holder: "",
     pan_card_number: "",
-    deposit_name: "",
 
     rent_bill_number: "",
     bill_type: "",
@@ -162,7 +161,7 @@ const AddPayment = () => {
     penalty: 0,
     medicine: 0,
     emi_fdr_interest: 0,
-    gain_shortage_deducton: 0,
+    gain_shortage_deduction: 0,
     stock_shortage_deduction: 0,
     bank_solvancy: 0,
     insurance: 0,
@@ -176,7 +175,7 @@ const AddPayment = () => {
     payment_date: "",
     qtr: "",
 
-    net_amount_payable: "",
+    // net_amount_payable: "",
     remarks: "",
   });
 
@@ -267,11 +266,29 @@ const AddPayment = () => {
         district_name: selected.district_name,
         warehouse_name: selected.warehouse_name,
         warehouse_owner_name: selected.warehouse_owner_name,
+        warehouse_type: selected.warehouse_type,
         warehouse_no: selected.warehouse_no,
-        sr_no: selected.sr_no,
+
+        gst_no: selected.gst_no,
+        scheme: selected.scheme,
+        scheme_rate_amount: selected.scheme_rate_amount,
+
+        actual_storage_capacity: selected.actual_storage_capacity,
+        approved_storage_capacity: selected.approved_storage_capacity,
+
+        bank_solvency_affidavit_amount: selected.bank_solvency_affidavit_amount,
+        bank_solvency_certificate_amount:
+          selected.bank_solvency_certificate_amount,
+        bank_solvency_deduction_by_bill:
+          selected.bank_solvency_deduction_by_bill,
+        bank_solvency_balance: selected.bank_solvency_balance,
+
+        total_emi: selected.total_emi,
+        emi_deduction_by_bill: selected.emi_deduction_by_bill,
+        emi_balance: selected.emi_balance,
+
         pan_card_holder: selected.pan_card_holder,
         pan_card_number: selected.pan_card_number,
-        deposit_name: selected.deposit_name,
       }));
     }
   };
@@ -335,7 +352,7 @@ const AddPayment = () => {
         penalty: Number(formData.penalty || 0),
         medicine: Number(formData.medicine || 0),
         emi_fdr_interest: Number(formData.emi_fdr_interest || 0),
-        gain_shortage_deducton: Number(formData.gain_shortage_deducton || 0),
+        gain_shortage_deduction: Number(formData.gain_shortage_deduction || 0),
         stock_shortage_deduction: Number(
           formData.stock_shortage_deduction || 0,
         ),
@@ -350,7 +367,7 @@ const AddPayment = () => {
         pay_to_jvs_amount: Number(formData.pay_to_jvs_amount || 0),
 
         /* FINAL */
-        net_amount_payable: Number(formData.net_amount_payable || 0),
+        // net_amount_payable: Number(formData.net_amount_payable || 0),
       };
 
       const result = await dispatch(createNewPayment(payload));
@@ -762,8 +779,8 @@ const AddPayment = () => {
             <FormField label="Gain Shortage Deduction">
               <Input
                 type="number"
-                name="gain_shortage_deducton"
-                value={formData.gain_shortage_deducton}
+                name="gain_shortage_deduction"
+                value={formData.gain_shortage_deduction}
                 onChange={handleChange}
                 placeholder="Gain Shortage Deduction"
               />

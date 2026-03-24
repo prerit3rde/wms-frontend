@@ -1,305 +1,200 @@
 import { useEffect, useState } from "react";
-import axios from "../../services/axios";
-import Card from "../../components/global/Card";
 import Button from "../../components/global/Button";
 import Table from "../../components/global/Table";
-import toast from "react-hot-toast";
+import axios from "../../services/axios";
 
-const Reports = () => {
-  const [district, setDistrict] = useState("");
-  const [branch, setBranch] = useState("");
-  const [warehouseType, setWarehouseType] = useState("");
-  const [warehouseName, setWarehouseName] = useState("");
+const reportTypes = [
+  { label: "Bank Solvancy Reports", value: "BANK_SOLVANCY" },
+  { label: "TDS Reports", value: "TDS" },
+  { label: "EMI Reports", value: "EMI" },
+  { label: "20% Deduction Reports", value: "DEDUCTION_20" },
+];
 
-  const [selectedMonth, setSelectedMonth] = useState("");
-  const [month, setMonth] = useState("");
+export default function Reports() {
+  const [reportType, setReportType] = useState("");
   const [financialYear, setFinancialYear] = useState("");
 
-  const [status, setStatus] = useState("");
+  const [financialYears, setFinancialYears] = useState([]);
+  const [previewData, setPreviewData] = useState([]);
+  const [reports, setReports] = useState([]);
 
-  const [filterOptions, setFilterOptions] = useState({
-    districts: [],
-    branches: [],
-    warehouseNames: [],
-  });
-
-  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  /* ================= FETCH FILTER OPTIONS ================= */
-  useEffect(() => {
-    const fetchFilters = async () => {
-      const res = await axios.get("/warehouses/filters");
-      setFilterOptions(res.data.data);
-    };
-
-    fetchFilters();
-  }, []);
-
-  /* ================= FETCH REPORT HISTORY ================= */
-  const fetchHistory = async () => {
-    const res = await axios.get("/reports/history");
-    setHistory(res.data.data || []);
+  /* ================= FETCH FINANCIAL YEARS ================= */
+  const fetchFinancialYears = async () => {
+    try {
+      const res = await axios.get("/reports/financial-years");
+      setFinancialYears(res.data.data || []);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  useEffect(() => {
-    fetchHistory();
-  }, []);
+  /* ================= FETCH SAVED REPORTS ================= */
+  const fetchReports = async () => {
+    try {
+      const res = await axios.get("/reports");
+      setReports(res.data.data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-  /* ================= GENERATE REPORT ================= */
-  const generateReport = async () => {
+  /* ================= PREVIEW REPORT ================= */
+  const handlePreview = async () => {
+    if (!reportType || !financialYear) {
+      alert("Please select both fields");
+      return;
+    }
+
     try {
       setLoading(true);
 
-      await axios.post("/reports/payments/generate", {
-        filters: {
-          district_name: district,
-          branch_name: branch,
-          warehouse_name: warehouseName,
-          warehouse_type: warehouseType,
-          month,
-          financial_year: financialYear,
-          status,
-        },
+      const res = await axios.get("/reports/preview", {
+        params: { reportType, financialYear },
       });
 
-      fetchHistory();
-
-      toast.success("Report generated successfully");
+      setPreviewData(res.data.data || []);
     } catch (err) {
-      toast.error("Report generation failed");
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  /* ================= DOWNLOAD REPORT ================= */
-  const downloadReport = async (id) => {
+  /* ================= GENERATE REPORT ================= */
+  const handleGenerate = async () => {
+    if (!previewData.length) {
+      alert("No data to generate");
+      return;
+    }
+
     try {
-      const res = await axios.get(`/reports/download/${id}`, {
-        responseType: "blob",
+      setLoading(true);
+
+      await axios.post("/reports/generate", {
+        reportType,
+        financialYear,
       });
 
-      const url = window.URL.createObjectURL(new Blob([res.data]));
+      alert("Report Generated Successfully");
 
-      const link = document.createElement("a");
-
-      link.href = url;
-
-      link.setAttribute("download", `payments-report-${id}.xlsx`);
-
-      document.body.appendChild(link);
-
-      link.click();
-
-      link.remove();
-    } catch (error) {
-      alert("Download failed");
+      fetchReports(); // refresh list
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
+  /* ================= DOWNLOAD ================= */
+  const handleDownload = (filePath) => {
+    const baseURL = import.meta.env.VITE_API_BASE_URL;
+    window.open(`${baseURL}/${filePath}`, "_blank");
+  };
+
+  useEffect(() => {
+    fetchFinancialYears();
+    fetchReports();
+  }, []);
+
   /* ================= TABLE COLUMNS ================= */
-  const columns = [
 
-    { key: "report_name", label: "Report Name" },
+  const previewColumns = [
+    { label: "Sr No", key: "id" },
+    { label: "District", key: "district_name" },
+    { label: "Branch", key: "branch_name" },
+    { label: "Warehouse", key: "warehouse_name" },
+    { label: "Bill Amount", key: "bill_amount" },
+    { label: "TDS", key: "tds" },
+    { label: "EMI", key: "emi_amount" },
+    { label: "Bank Solvancy", key: "bank_solvancy" },
+  ];
 
-    { key: "report_type", label: "Type" },
-
+  const reportColumns = [
+    { label: "ID", key: "id" },
+    { label: "Report Type", key: "report_type" },
+    { label: "Financial Year", key: "financial_year" },
     {
-      key: "created_at",
       label: "Created At",
-      render: (value) =>
-        new Date(value).toLocaleString("en-IN", {
-          dateStyle: "medium",
-          timeStyle: "short",
-        }),
+      key: "created_at",
+      render: (value) => new Date(value).toLocaleString(),
     },
-
     {
-      key: "download",
       label: "Download",
+      key: "download",
       render: (_, row) => (
-        <Button
-          onClick={() => downloadReport(row.id)}
-          className="text-blue-600"
-        >
-          Download
-        </Button>
+        <Button onClick={() => handleDownload(row.file_path)}>Download</Button>
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
-      {/* HEADER */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800">
-          Payments Report Generation
-        </h1>
-
-        <p className="text-gray-500 mt-1">
-          Filter, generate and export payments data
-        </p>
-      </div>
-
-      {/* FILTER CARD */}
-      <Card className="p-6 space-y-4">
-        {/* CASCADING FILTERS */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* District */}
+    <div className="p-6 space-y-6">
+      {/* ================= FILTER SECTION ================= */}
+      <div className="bg-white p-4 rounded-xl shadow flex flex-wrap gap-4 items-end">
+        {/* Report Type */}
+        <div className="flex flex-col">
+          <label className="text-sm font-medium">Report Type</label>
           <select
-            value={district}
-            onChange={(e) => {
-              setDistrict(e.target.value);
-              setBranch("");
-              setWarehouseType("");
-              setWarehouseName("");
-            }}
-            className="px-4 py-2 border rounded-lg"
+            className="border rounded-lg px-3 py-2"
+            value={reportType}
+            onChange={(e) => setReportType(e.target.value)}
           >
-            <option value="">Select District</option>
-
-            {filterOptions.districts.map((d) => (
-              <option key={d.district_name} value={d.district_name}>
-                {d.district_name}
+            <option value="">Select</option>
+            {reportTypes.map((type) => (
+              <option key={type.value} value={type.value}>
+                {type.label}
               </option>
             ))}
-          </select>
-
-          {/* Branch */}
-          <select
-            value={branch}
-            disabled={!district}
-            onChange={(e) => {
-              setBranch(e.target.value);
-              setWarehouseType("");
-              setWarehouseName("");
-            }}
-            className={`px-4 py-2 border rounded-lg ${
-              !district ? "bg-gray-100" : ""
-            }`}
-          >
-            <option value="">Select Branch</option>
-
-            {filterOptions.branches
-              .filter((b) => b.district_name === district)
-              .map((b) => (
-                <option key={b.branch_name} value={b.branch_name}>
-                  {b.branch_name}
-                </option>
-              ))}
-          </select>
-
-          {/* Type */}
-          <select
-            value={warehouseType}
-            disabled={!branch}
-            onChange={(e) => {
-              setWarehouseType(e.target.value);
-              setWarehouseName("");
-            }}
-            className={`px-4 py-2 border rounded-lg ${
-              !branch ? "bg-gray-100" : ""
-            }`}
-          >
-            <option value="">Select Type</option>
-
-            {[
-              ...new Set(
-                filterOptions.warehouseNames
-                  .filter(
-                    (w) =>
-                      w.district_name === district && w.branch_name === branch
-                  )
-                  .map((w) => w.warehouse_type)
-              ),
-            ].map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-
-          {/* Warehouse */}
-          <select
-            value={warehouseName}
-            disabled={!warehouseType}
-            onChange={(e) => setWarehouseName(e.target.value)}
-            className={`px-4 py-2 border rounded-lg ${
-              !warehouseType ? "bg-gray-100" : ""
-            }`}
-          >
-            <option value="">Select Warehouse</option>
-
-            {filterOptions.warehouseNames
-              .filter(
-                (w) =>
-                  w.district_name === district &&
-                  w.branch_name === branch &&
-                  w.warehouse_type === warehouseType
-              )
-              .map((w) => (
-                <option key={w.warehouse_name} value={w.warehouse_name}>
-                  {w.warehouse_name}
-                </option>
-              ))}
           </select>
         </div>
 
-        {/* MONTH + FY + STATUS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Month Picker */}
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => {
-              setSelectedMonth(e.target.value);
-
-              const date = new Date(e.target.value);
-              const monthName = date.toLocaleString("default", {
-                month: "long",
-              });
-
-              setMonth(monthName);
-            }}
-            className="px-4 py-2 border rounded-lg"
-          />
-
-          {/* Financial Year Auto */}
-          <input
-            placeholder="Financial Year (eg: 2024-2025)"
+        {/* Financial Year */}
+        <div className="flex flex-col">
+          <label className="text-sm font-medium">Financial Year</label>
+          <select
+            className="border rounded-lg px-3 py-2"
             value={financialYear}
             onChange={(e) => setFinancialYear(e.target.value)}
-            className="px-4 py-2 border rounded-lg"
-          />
-
-          {/* Status */}
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="px-4 py-2 border rounded-lg"
           >
-            <option value="">Status</option>
-            <option value="Pending">Pending</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
+            <option value="">Select</option>
+            {financialYears.map((fy, index) => (
+              <option key={index} value={fy.financial_year}>
+                {fy.financial_year}
+              </option>
+            ))}
           </select>
         </div>
 
-        {/* GENERATE BUTTON */}
-        <Button onClick={generateReport} disabled={loading}>
-          {loading ? "Generating..." : "Generate Report"}
+        {/* Preview Button */}
+        <Button onClick={handlePreview} disabled={loading}>
+          Generate Report
         </Button>
-      </Card>
 
-      {/* REPORT HISTORY */}
-      <Card>
-        <h2 className="text-lg font-semibold mb-4">Report History</h2>
+        {/* Generate Button */}
+        {previewData.length > 0 && (
+          <Button variant="success" onClick={handleGenerate} disabled={loading}>
+            Generate & Save
+          </Button>
+        )}
+      </div>
 
-        <Table columns={columns} data={history} />
-      </Card>
+      {/* ================= PREVIEW TABLE ================= */}
+      {previewData.length > 0 && (
+        <div className="bg-white p-4 rounded-xl shadow">
+          <h2 className="text-lg font-semibold mb-4">Preview Report Data</h2>
+
+          <Table columns={previewColumns} data={previewData} />
+        </div>
+      )}
+
+      {/* ================= GENERATED REPORTS ================= */}
+      <div className="bg-white p-4 rounded-xl shadow">
+        <h2 className="text-lg font-semibold mb-4">Generated Reports</h2>
+
+        <Table columns={reportColumns} data={reports} />
+      </div>
     </div>
   );
-};
-
-export default Reports;
+}

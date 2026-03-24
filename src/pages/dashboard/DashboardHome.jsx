@@ -87,11 +87,11 @@ const DashboardHome = () => {
               <div
                 key={payment.id}
                 onClick={() => navigate(`/admin/payments/view/${payment.id}`)}
-                className="flex justify-between items-center border-b pb-2 cursor-pointer hover:bg-gray-50 px-2 py-1 rounded"
+                className="flex justify-between items-center border-b cursor-pointer hover:bg-gray-50 m-0 p-4"
               >
                 <p className="text-gray-700">{payment.warehouse_name}</p>
 
-                <span
+                {/* <span
                   className={`text-xs px-3 py-1 rounded-full font-medium
                   ${
                     payment.status === "Approved"
@@ -102,7 +102,7 @@ const DashboardHome = () => {
                   }`}
                 >
                   {payment.status}
-                </span>
+                </span> */}
               </div>
             ))}
           </div>

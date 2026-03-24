@@ -40,7 +40,7 @@ const EditPayment = () => {
     warehouse_owner_name: "",
     warehouse_type: "",
     warehouse_no: "",
-    sr_no: "",
+    gst_no: "",
     pan_card_holder: "",
     pan_card_number: "",
     deposit_name: "",
@@ -70,7 +70,7 @@ const EditPayment = () => {
     penalty: "",
     medicine: "",
     emi_fdr_interest: "",
-    gain_shortage_deducton: "",
+    gain_shortage_deduction: "",
     stock_shortage_deduction: "",
     bank_solvancy: "",
     insurance: "",
@@ -84,7 +84,7 @@ const EditPayment = () => {
     payment_date: "",
     qtr: "",
 
-    net_amount_payable: "",
+    // net_amount_payable: "",
     remarks: "",
   });
 
@@ -181,7 +181,7 @@ const EditPayment = () => {
         penalty: Number(formData.penalty || 0),
         medicine: Number(formData.medicine || 0),
         emi_fdr_interest: Number(formData.emi_fdr_interest || 0),
-        gain_shortage_deducton: Number(formData.gain_shortage_deducton || 0),
+        gain_shortage_deduction: Number(formData.gain_shortage_deduction || 0),
         stock_shortage_deduction: Number(
           formData.stock_shortage_deduction || 0,
         ),
@@ -192,7 +192,7 @@ const EditPayment = () => {
         security_fund_amount: Number(formData.security_fund_amount || 0),
         pay_to_jvs_amount: Number(formData.pay_to_jvs_amount || 0),
 
-        net_amount_payable: Number(formData.net_amount_payable || 0),
+        // net_amount_payable: Number(formData.net_amount_payable || 0),
       };
 
       const result = await dispatch(
@@ -551,8 +551,8 @@ const EditPayment = () => {
             <FormField label="Gain Shortage Deduction">
               <Input
                 type="number"
-                name="gain_shortage_deducton"
-                value={formData.gain_shortage_deducton}
+                name="gain_shortage_deduction"
+                value={formData.gain_shortage_deduction}
                 onChange={handleChange}
                 placeholder="Gain Shortage Deduction"
               />

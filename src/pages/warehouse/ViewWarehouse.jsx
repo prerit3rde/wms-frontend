@@ -5,6 +5,8 @@ import { fetchWarehouseById } from "../../redux/slices/warehouseSlice";
 import { ArrowLeft, Edit } from "lucide-react";
 import Button from "../../components/global/Button";
 
+// ✅ SAME LOGIC — ONLY UI CHANGED
+
 const ViewWarehouse = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -29,29 +31,24 @@ const ViewWarehouse = () => {
   if (!currentWarehouse) return null;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
-      <div className="flex justify-between">
+    <div className="max-w-4xl mx-auto space-y-8">
+      {/* ✅ HEADER (MATCH PAYMENT) */}
+      <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Warehouse Details</h1>
 
-        <div className="flex gap-2">
-          <Button
-            className="gap-2"
-            variant="outline"
-            onClick={() => navigate(-1)}
-          >
-            <ArrowLeft size={16} /> Back
+        <div className="flex gap-3">
+          <Button className="flex gap-2" variant="secondary" onClick={() => navigate(-1)}>
+            <ArrowLeft size={16} /> Back To List
           </Button>
 
-          <Button
-            className="gap-2"
-            onClick={() => navigate(`/admin/warehouses/edit/${id}`)}
-          >
+          <Button className="flex gap-2 tracking-wide" onClick={() => navigate(`/admin/warehouses/edit/${id}`)}>
             <Edit size={16} /> Edit
           </Button>
         </div>
       </div>
 
-      <Card>
+      {/* ✅ CARD DESIGN SAME AS PAYMENT */}
+      <div className="bg-white border rounded-xl p-6 space-y-8">
         <Section title="Basic Information">
           <Field label="District" value={currentWarehouse.district_name} />
           <Field label="Branch" value={currentWarehouse.branch_name} />
@@ -59,8 +56,14 @@ const ViewWarehouse = () => {
             label="Warehouse Name"
             value={currentWarehouse.warehouse_name}
           />
-          <Field label="Warehouse Owner" value={currentWarehouse.warehouse_owner_name} />
-          <Field label="Warehouse Type" value={currentWarehouse.warehouse_type} />
+          <Field
+            label="Warehouse Owner"
+            value={currentWarehouse.warehouse_owner_name}
+          />
+          <Field
+            label="Warehouse Type"
+            value={currentWarehouse.warehouse_type}
+          />
           <Field label="Warehouse No" value={currentWarehouse.warehouse_no} />
           <Field label="GST No" value={currentWarehouse.gst_no} />
         </Section>
@@ -113,10 +116,16 @@ const ViewWarehouse = () => {
         </Section>
 
         <Section title="PAN Details">
-          <Field label="PAN Card Holder" value={currentWarehouse.pan_card_holder} />
-          <Field label="PAN Card Number" value={currentWarehouse.pan_card_number} />
+          <Field
+            label="PAN Card Holder"
+            value={currentWarehouse.pan_card_holder}
+          />
+          <Field
+            label="PAN Card Number"
+            value={currentWarehouse.pan_card_number}
+          />
         </Section>
-      </Card>
+      </div>
     </div>
   );
 };
@@ -125,18 +134,24 @@ const Card = ({ children }) => (
   <div className="bg-white p-6 rounded-xl border space-y-6">{children}</div>
 );
 
-const Section = ({ title, children }) => (
-  <div>
-    <h2 className="font-semibold mb-4">{title}</h2>
-    <div className="space-y-3">{children}</div>
-  </div>
-);
+const Section = ({ title, children }) => {
+  return (
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold border-b pb-2">{title}</h2>
+      {children}
+    </div>
+  );
+};
 
-const Field = ({ label, value }) => (
-  <div className="flex justify-between border-b pb-2">
-    <span className="text-gray-500">{label}</span>
-    <span className="font-medium">{value || "-"}</span>
-  </div>
-);
+const Field = ({ label, value }) => {
+  if (value === null || value === "" || value === undefined) return null;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-3">
+      <div className="text-gray-500 text-sm">{label}</div>
+      <div className="font-medium">{value}</div>
+    </div>
+  );
+};
 
 export default ViewWarehouse;
