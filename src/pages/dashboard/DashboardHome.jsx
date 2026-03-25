@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchWarehouses } from "../../redux/slices/warehouseSlice";
 import { fetchPayments } from "../../redux/slices/paymentsSlice";
 import { useNavigate } from "react-router-dom";
-import { Warehouse, FileText, Clock, Plus } from "lucide-react";
+import { Warehouse, FileText, Clock, Plus, Proportions } from "lucide-react";
 import Card from "../../components/global/Card";
 
 const DashboardHome = () => {
@@ -58,7 +58,7 @@ const DashboardHome = () => {
           <FileText size={34} className="text-purple-500" />
         </Card>
 
-        <Card className="flex items-center justify-between">
+        {/* <Card className="flex items-center justify-between">
           <div>
             <p className="text-gray-500 text-sm">Pending Payments</p>
             <p className="text-3xl font-bold text-yellow-500">
@@ -66,7 +66,16 @@ const DashboardHome = () => {
             </p>
           </div>
           <Clock size={34} className="text-yellow-500" />
-        </Card>
+        </Card> */}
+        {/* <Card className="flex items-center justify-between">
+          <div>
+            <p className="text-gray-500 text-sm">Total Reports</p>
+            <p className="text-3xl font-bold text-yellow-500">
+              100
+            </p>
+          </div>
+          <Proportions size={34} className="text-yellow-500" />
+        </Card> */}
       </div>
 
       {/* MAIN SECTION */}
