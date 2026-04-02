@@ -37,11 +37,18 @@ const ViewWarehouse = () => {
         <h1 className="text-2xl font-bold">Warehouse Details</h1>
 
         <div className="flex gap-3">
-          <Button className="flex gap-2" variant="secondary" onClick={() => navigate(-1)}>
+          <Button
+            className="flex gap-2"
+            variant="secondary"
+            onClick={() => navigate(-1)}
+          >
             <ArrowLeft size={16} /> Back To List
           </Button>
 
-          <Button className="flex gap-2 tracking-wide" onClick={() => navigate(`/admin/warehouses/edit/${id}`)}>
+          <Button
+            className="flex gap-2 tracking-wide"
+            onClick={() => navigate(`/admin/warehouses/edit/${id}`)}
+          >
             <Edit size={16} /> Edit
           </Button>
         </div>
@@ -68,52 +75,64 @@ const ViewWarehouse = () => {
           <Field label="GST No" value={currentWarehouse.gst_no} />
         </Section>
 
-        <Section title="Scheme & Capacity">
-          <Field label="Scheme" value={currentWarehouse.scheme} />
-          <Field
-            label="Scheme Rate Amount"
-            value={currentWarehouse.scheme_rate_amount}
-          />
-          <Field
-            label="Actual Storage Capacity"
-            value={currentWarehouse.actual_storage_capacity}
-          />
-          <Field
-            label="Approved Storage Capacity"
-            value={currentWarehouse.approved_storage_capacity}
-          />
-        </Section>
+        {currentWarehouse.cropData?.map((item, index) => (
+          <div key={index} className="space-y-6">
+            <h2 className="text-lg font-semibold border-b pb-2">
+              Crop Year {index + 1} ({item.crop_year})
+            </h2>
 
-        <Section title="Bank Solvency">
-          <Field
-            label="Bank Solvency Affidavit Amount"
-            value={currentWarehouse.bank_solvency_affidavit_amount}
-          />
-          <Field
-            label="Bank Solvency Certificate Amount"
-            value={currentWarehouse.bank_solvency_certificate_amount}
-          />
-          <Field
-            label="Bank Solvency Deduction by Bill"
-            value={currentWarehouse.bank_solvency_deduction_by_bill}
-          />
-          <Field
-            label="Balance Amount Bank Solvancy"
-            value={currentWarehouse.bank_solvency_balance_amount}
-          />
-        </Section>
+            {/* SCHEME */}
+            <Section title="Scheme & Capacity" className="text-sm">
+              <Field label="Scheme" value={item.scheme} />
+              <Field
+                label="Scheme Rate Amount"
+                value={item.scheme_rate_amount}
+              />
+              <Field
+                label="Actual Storage Capacity"
+                value={item.actual_storage_capacity}
+              />
+              <Field
+                label="Approved Storage Capacity"
+                value={item.approved_storage_capacity}
+              />
+            </Section>
 
-        <Section title="EMI">
-          <Field label="Total EMI" value={currentWarehouse.total_emi} />
-          <Field
-            label="EMI Deduction by Bill"
-            value={currentWarehouse.emi_deduction_by_bill}
-          />
-          <Field
-            label="EMI Balance"
-            value={currentWarehouse.balance_amount_emi}
-          />
-        </Section>
+            {/* SOLVENCY */}
+            <Section title="Bank Solvency">
+              <Field
+                label="Type"
+                value={item.is_affidavit ? "Affidavit" : "Certificate"}
+              />
+              <Field
+                label="Bank Solvency Affidavit Amount"
+                value={item.bank_solvency_affidavit_amount}
+              />
+              <Field
+                label="Bank Solvency Certificate Amount"
+                value={item.bank_solvency_certificate_amount}
+              />
+              <Field
+                label="Bank Solvency Deduction by Bill"
+                value={item.bank_solvency_deduction_by_bill}
+              />
+              <Field
+                label="Balance Amount Bank Solvancy"
+                value={item.bank_solvency_balance_amount}
+              />
+            </Section>
+
+            {/* EMI */}
+            <Section title="EMI">
+              <Field label="Total EMI" value={item.total_emi} />
+              <Field
+                label="EMI Deduction by Bill"
+                value={item.emi_deduction_by_bill}
+              />
+              <Field label="EMI Balance" value={item.balance_amount_emi} />
+            </Section>
+          </div>
+        ))}
 
         <Section title="PAN Details">
           <Field
@@ -137,7 +156,7 @@ const Card = ({ children }) => (
 const Section = ({ title, children }) => {
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold border-b pb-2">{title}</h2>
+      <h2 className="text-base font-semibold border-b pb-2">{title}</h2>
       {children}
     </div>
   );
