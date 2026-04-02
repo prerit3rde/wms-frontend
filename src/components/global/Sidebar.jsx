@@ -1,15 +1,22 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import {
   Package,
   FileText,
   BarChart3,
   ChevronDown,
   FileTextIcon,
+  UserRoundPen,
+  LogOut,
 } from "lucide-react";
+import { logout } from "../../redux/slices/authSlice";
 
 const Sidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
   const [expandedMenu, setExpandedMenu] = useState(null);
 
   const isActive = (path) => location.pathname.startsWith(path);
@@ -17,6 +24,11 @@ const Sidebar = () => {
 
   const toggleMenu = (menu) => {
     setExpandedMenu(expandedMenu === menu ? null : menu);
+  };
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate("/login");
   };
 
   const menuItems = [
@@ -47,15 +59,22 @@ const Sidebar = () => {
       icon: <FileTextIcon size={20} />,
       path: "/admin/reports",
     },
+    {
+      label: "Profile",
+      icon: <UserRoundPen size={20} />,
+      path: "/admin/profile",
+    },
   ];
 
   return (
-    <aside className="hidden lg:block w-64 bg-gray-900 text-white min-h-screen overflow-y-auto sticky top-0 h-full">
+    <aside className="hidden lg:flex flex-col w-64 bg-gray-900 text-white min-h-screen sticky top-0 h-full">
+      {/* LOGO */}
       <div className="p-6">
         <h2 className="text-2xl font-bold">WMS</h2>
       </div>
 
-      <nav className="space-y-2 px-4">
+      {/* MENU */}
+      <nav className="space-y-2 px-4 flex-1">
         {menuItems.map((item, index) => (
           <div key={index}>
             {item.submenu ? (
@@ -112,6 +131,17 @@ const Sidebar = () => {
           </div>
         ))}
       </nav>
+
+      {/* LOGOUT BUTTON */}
+      <div className="p-4 border-t border-gray-700">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:bg-gray-800 w-full cursor-pointer"
+        >
+          <LogOut size={20} />
+          Logout
+        </button>
+      </div>
     </aside>
   );
 };

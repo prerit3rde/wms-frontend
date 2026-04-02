@@ -9,8 +9,8 @@ export const login = (data) =>
 export const forgotPassword = (email) =>
   axiosInstance.post("/auth/forgot-password", { email });
 
-export const resetPassword = (token, data) =>
-  axiosInstance.post(`/auth/reset-password/${token}`, data);
+export const resetPassword = (token, password) =>
+  axiosInstance.post(`/auth/reset-password/${token}`, { password });
 
 export const getProfile = () =>
   axiosInstance.get("/auth/profile");

@@ -27,6 +27,9 @@ import ViewPayment from "../pages/payments/ViewPayment";
 
 // Profile Page
 import Profile from "../pages/profile/Profile";
+import EditProfile from "../pages/profile/EditProfile";
+import ChangePassword from "../pages/profile/ChangePassword";
+import EmailConfirmed from "../pages/auth/EmailConfirmed";
 
 // Reports
 import Reports from "../pages/reports/Reports";
@@ -40,6 +43,7 @@ const AppRoutes = () => {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/email-confirmed" element={<EmailConfirmed />} />
 
         {/* Protected Admin Routes */}
         <Route
@@ -69,6 +73,13 @@ const AppRoutes = () => {
 
           {/* Profile */}
           <Route path="profile" element={<Profile />} />
+          <Route path="edit-profile" element={<EditProfile />} />
+
+
+          <Route path="change-password" element={<ChangePassword />} />
+          
+
+          {/* Reports */}
           <Route path="reports" element={<Reports />} />
         </Route>
 

@@ -9,6 +9,8 @@ import Button from "../../components/global/Button";
 import Input from "../../components/global/Input";
 import { useNavigate } from "react-router-dom";
 import { Pencil, Trash2 } from "lucide-react";
+import Card from "../../components/global/Card";
+import Table from "../../components/global/Table";
 
 const AddWarehouseType = () => {
   const [typeName, setTypeName] = useState("");
@@ -77,6 +79,36 @@ const AddWarehouseType = () => {
     }
   };
 
+  const columns = [
+    {
+      key: "name",
+      label: "Warehouse Type Name",
+    },
+    {
+      key: "actions",
+      label: <div className="text-right w-full pr-2">Actions</div>,
+      render: (_, type) => (
+        <div className="flex justify-end gap-2">
+          {/* EDIT */}
+          <button
+            onClick={() => handleEdit(type)}
+            className="cursor-pointer p-2 rounded-lg bg-yellow-100 text-yellow-600 hover:bg-yellow-200 transition"
+          >
+            <Pencil size={16} />
+          </button>
+
+          {/* DELETE */}
+          <button
+            onClick={() => handleDelete(type.id)}
+            className="cursor-pointer p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* HEADER */}
@@ -124,56 +156,15 @@ const AddWarehouseType = () => {
             All Warehouse Types
           </div>
 
-          <div className="bg-white rounded-2xl shadow-md overflow-hidden">
+          <Card>
             {!types || types.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 No warehouse types found
               </div>
             ) : (
-              <table className="w-full">
-                {/* HEADER */}
-                <thead className="bg-gray-100 text-gray-600 text-sm">
-                  <tr>
-                    <th className="px-6 py-4 text-left font-medium">
-                      Warehouse Type Name
-                    </th>
-                    <th className="px-6 py-4 text-right font-medium">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-
-                {/* BODY */}
-                <tbody className="divide-y">
-                  {types.map((type) => (
-                    <tr key={type.id} className="hover:bg-gray-50 transition">
-                      <td className="px-6 py-4 text-gray-800">{type.name}</td>
-
-                      <td className="px-6 py-4">
-                        <div className="flex justify-end gap-2">
-                          {/* EDIT */}
-                          <button
-                            onClick={() => handleEdit(type)}
-                            className="p-2 rounded-lg bg-yellow-100 text-yellow-600 hover:bg-yellow-200 transition"
-                          >
-                            <Pencil size={16} />
-                          </button>
-
-                          {/* DELETE */}
-                          <button
-                            onClick={() => handleDelete(type.id)}
-                            className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <Table columns={columns} data={types} />
             )}
-          </div>
+          </Card>
         </div>
       </div>
     </div>

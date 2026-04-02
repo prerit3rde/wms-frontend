@@ -6,6 +6,7 @@ import { Lock } from "lucide-react";
 import Input from "../../components/global/Input";
 import Button from "../../components/global/Button";
 import Card from "../../components/global/Card";
+import toast from "react-hot-toast";
 
 const ResetPassword = () => {
   const { token } = useParams();
@@ -23,7 +24,7 @@ const ResetPassword = () => {
     e.preventDefault();
 
     if (form.password !== form.confirmPassword) {
-      alert("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
 
