@@ -6,7 +6,7 @@ import {
   setPage,
 } from "../../redux/slices/warehouseSlice";
 import { Eye, Pencil, Trash2, Plus, Filter, Import } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Form, Link } from "react-router-dom";
 import axios from "../../services/axios";
 import Button from "../../components/global/Button";
 import Card from "../../components/global/Card";
@@ -40,11 +40,14 @@ const WarehouseList = () => {
   const [warehouseName, setWarehouseName] = useState("");
   const [warehouseType, setWarehouseType] = useState("");
 
+  const [cropYear, setCropYear] = useState("");
+
   const [filterOptions, setFilterOptions] = useState({
     districts: [],
     branches: [],
     warehouseNames: [],
     warehouseTypes: [],
+    cropYears: [],
   });
 
   /* ===============================
@@ -57,9 +60,18 @@ const WarehouseList = () => {
       branch ||
       warehouseName ||
       warehouseType ||
-      sortOption !== "date_desc"
+      sortOption !== "date_desc" ||
+      cropYear
     );
-  }, [search, district, branch, warehouseName, warehouseType, sortOption]);
+  }, [
+    search,
+    district,
+    branch,
+    warehouseName,
+    warehouseType,
+    sortOption,
+    cropYear,
+  ]);
 
   /* ===============================
      FETCH FILTER OPTIONS
@@ -90,6 +102,7 @@ const WarehouseList = () => {
         branch,
         warehouse_name: warehouseName,
         warehouse_type: warehouseType,
+        crop_year: cropYear,
       }),
     );
   }, [
@@ -102,6 +115,7 @@ const WarehouseList = () => {
     branch,
     warehouseName,
     warehouseType,
+    cropYear,
   ]);
 
   /* ===============================
@@ -115,6 +129,7 @@ const WarehouseList = () => {
     setWarehouseName("");
     setWarehouseType("");
     dispatch(setPage(1));
+    setCropYear("");
   };
 
   /* ===============================
@@ -328,7 +343,7 @@ const WarehouseList = () => {
       {/* Controls */}
       <Card className="p-6 space-y-4">
         {/* Top Row */}
-        <div className="flex flex-wrap gap-4 items-center">
+        <div className="flex flex-wrap gap-4 items-end">
           {/* Filter Button */}
           <button
             onClick={() => setShowFilters(!showFilters)}
@@ -345,34 +360,58 @@ const WarehouseList = () => {
 
           {/* Search */}
           <div className="flex-1 min-w-[250px]">
-            <Input
-              type="text"
-              placeholder="Search warehouse..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                dispatch(setPage(1));
-              }}
-            />
+            <FormField label="Search Warehouse">
+              <Input
+                type="text"
+                placeholder="Search warehouse..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  dispatch(setPage(1));
+                }}
+              />
+            </FormField>
           </div>
 
+          {/* Crop Year */}
+          <FormField label="Sort By Crop Year">
+            <select
+              value={cropYear}
+              onChange={(e) => {
+                setCropYear(e.target.value);
+                dispatch(setPage(1));
+              }}
+              className="px-4 py-2 border rounded-lg"
+            >
+              <option value="">Select Crop Year</option>
+
+              {filterOptions.cropYears.map((cy) => (
+                <option key={cy.crop_year} value={cy.crop_year}>
+                  {cy.crop_year}
+                </option>
+              ))}
+            </select>
+          </FormField>
+
           {/* Sort */}
-          <select
-            value={sortOption}
-            onChange={(e) => {
-              setSortOption(e.target.value);
-              dispatch(setPage(1));
-            }}
-            className="px-4 py-2 border rounded-lg cursor-pointer"
-          >
-            <option value="date_desc">Newest</option>
-            <option value="date_asc">Oldest</option>
-            <option value="imported">Imported</option>
-            {/* <option value="district_asc">District A-Z</option>
+          <FormField label="Sort By">
+            <select
+              value={sortOption}
+              onChange={(e) => {
+                setSortOption(e.target.value);
+                dispatch(setPage(1));
+              }}
+              className="px-4 py-2 border rounded-lg cursor-pointer"
+            >
+              <option value="date_desc">Newest</option>
+              <option value="date_asc">Oldest</option>
+              <option value="imported">Imported</option>
+              {/* <option value="district_asc">District A-Z</option>
             <option value="district_desc">District Z-A</option>
             <option value="name_asc">Warehouse A-Z</option>
             <option value="name_desc">Warehouse Z-A</option> */}
-          </select>
+            </select>
+          </FormField>
 
           {/* Reset (Active Color) */}
           <button
@@ -518,5 +557,13 @@ const WarehouseList = () => {
     </div>
   );
 };
+
+const FormField = ({ label, children, error }) => (
+  <div className="flex flex-col">
+    <label className="text-sm font-medium mb-1 text-gray-700">{label}</label>
+    {children}
+    {error && <span className="text-red-500 text-sm mt-1">{error}</span>}
+  </div>
+);
 
 export default WarehouseList;

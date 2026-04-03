@@ -7,7 +7,7 @@ import {
   setPage,
 } from "../../redux/slices/paymentsSlice";
 import { Eye, Pencil, Trash2, Plus, Filter, Import } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Form, Link } from "react-router-dom";
 import axios from "../../services/axios";
 import Button from "../../components/global/Button";
 import Card from "../../components/global/Card";
@@ -633,14 +633,16 @@ const PaymentList = () => {
           </button>
 
           <div className="flex-1 min-w-[250px]">
-            <Input
-              placeholder="Search payment..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                dispatch(setPage(1));
-              }}
-            />
+            <FormField label="Search Payment">
+              <Input
+                placeholder="Search payment..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  dispatch(setPage(1));
+                }}
+              />
+            </FormField>
           </div>
 
           {/* DATE FILTER (NOW TOP ROW) */}
@@ -668,21 +670,23 @@ const PaymentList = () => {
           </FormField>
 
           {/* SORT */}
-          <select
-            value={sortOption}
-            onChange={(e) => {
-              setSortOption(e.target.value);
-              dispatch(setPage(1));
-            }}
-            className="px-4 py-2 border rounded-lg cursor-pointer"
-          >
-            <option value="date_desc">Newest</option>
-            <option value="date_asc">Oldest</option>
-            <option value="imported">Imported</option>
-            {/* <option value="status_Pending">Pending</option>
+          <FormField label="Sort By">
+            <select
+              value={sortOption}
+              onChange={(e) => {
+                setSortOption(e.target.value);
+                dispatch(setPage(1));
+              }}
+              className="px-4 py-2 border rounded-lg cursor-pointer"
+            >
+              <option value="date_desc">Newest</option>
+              <option value="date_asc">Oldest</option>
+              <option value="imported">Imported</option>
+              {/* <option value="status_Pending">Pending</option>
             <option value="status_Approved">Approved</option>
             <option value="status_Rejected">Rejected</option> */}
-          </select>
+            </select>
+          </FormField>
 
           <button
             onClick={handleReset}
@@ -832,7 +836,7 @@ const PaymentList = () => {
 
 const FormField = ({ label, children, error }) => (
   <div className="flex flex-col">
-    <label className="text-sm font-medium mb-2 text-gray-700">{label}</label>
+    <label className="text-sm font-medium mb-1 text-gray-700">{label}</label>
     {children}
     {error && <span className="text-red-500 text-sm mt-1">{error}</span>}
   </div>

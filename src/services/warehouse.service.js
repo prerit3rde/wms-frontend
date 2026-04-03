@@ -11,6 +11,7 @@ export const getWarehouses = (params) => {
       branch: params?.branch || "",
       warehouse_name: params?.warehouse_name || "",
       warehouse_type: params?.warehouse_type || "",
+      crop_year: params?.crop_year || "",
     },
   });
 };

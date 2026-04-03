@@ -11,9 +11,9 @@ import toast from "react-hot-toast";
 const steps = [
   "Warehouse Selection",
   "Billing Details",
-  "Scientific Capacity",
+  // "Scientific Capacity",
   "Deductions",
-  "Payment",
+  // "Payment",
   // "Preview",
   "Remarks",
 ];
@@ -117,11 +117,18 @@ const AddPayment = () => {
 
   const [currentStep, setCurrentStep] = useState(0);
   const [warehouses, setWarehouses] = useState([]);
+
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
   const [filteredWarehouses, setFilteredWarehouses] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const [filteredBranches, setFilteredBranches] = useState([]);
   const [filteredTypes, setFilteredTypes] = useState([]);
+
+  const [selectedWarehouse, setSelectedWarehouse] = useState(null);
 
   const [formData, setFormData] = useState({
     district_name: "",
@@ -134,6 +141,21 @@ const AddPayment = () => {
     pan_card_holder: "",
     pan_card_number: "",
 
+    scheme: "",
+    scheme_rate_amount: 0,
+
+    actual_storage_capacity: 0,
+    approved_storage_capacity: 0,
+
+    bank_solvency_affidavit_amount: 0,
+    bank_solvency_certificate_amount: 0,
+    bank_solvency_deduction_by_bill: 0,
+    bank_solvency_balance: 0,
+
+    total_emi: 0,
+    emi_deduction_by_bill: 0,
+    emi_balance: 0,
+
     rent_bill_number: "",
     bill_type: "",
 
@@ -143,6 +165,7 @@ const AddPayment = () => {
     to_date: "",
 
     commodity: "",
+    crop_year: "",
     rate: 0,
     rent_bill_amount: 0,
 
@@ -178,6 +201,24 @@ const AddPayment = () => {
     // net_amount_payable: "",
     remarks: "",
   });
+
+  const handleCropYearChange = (year) => {
+    const selected = selectedWarehouse.cropData.find(
+      (c) => c.crop_year === year,
+    );
+
+    setFormData({
+      ...formData,
+      crop_year: year,
+      rate: selected?.scheme_rate_amount || 0,
+    });
+  };
+
+  const searchedWarehouses = warehouses.filter((w) =>
+    `${w.warehouse_name} ${w.district_name} ${w.branch_name}`
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase()),
+  );
 
   useEffect(() => {
     const billAmount = Number(formData.bill_amount || 0);
@@ -255,38 +296,20 @@ const AddPayment = () => {
 
   /* ================= AUTO SNAPSHOT ================= */
   const handleWarehouseSelect = (name) => {
-    const selected = warehouses.find(
-      (w) =>
-        w.warehouse_name === name && w.branch_name === formData.branch_name,
-    );
+    const selected = warehouses.find((w) => w.warehouse_name === name);
 
     if (selected) {
+      setSelectedWarehouse(selected); // ✅ IMPORTANT
+
       setFormData((prev) => ({
         ...prev,
         district_name: selected.district_name,
+        branch_name: selected.branch_name,
         warehouse_name: selected.warehouse_name,
         warehouse_owner_name: selected.warehouse_owner_name,
         warehouse_type: selected.warehouse_type,
         warehouse_no: selected.warehouse_no,
-
         gst_no: selected.gst_no,
-        scheme: selected.scheme,
-        scheme_rate_amount: selected.scheme_rate_amount,
-
-        actual_storage_capacity: selected.actual_storage_capacity,
-        approved_storage_capacity: selected.approved_storage_capacity,
-
-        bank_solvency_affidavit_amount: selected.bank_solvency_affidavit_amount,
-        bank_solvency_certificate_amount:
-          selected.bank_solvency_certificate_amount,
-        bank_solvency_deduction_by_bill:
-          selected.bank_solvency_deduction_by_bill,
-        bank_solvency_balance: selected.bank_solvency_balance,
-
-        total_emi: selected.total_emi,
-        emi_deduction_by_bill: selected.emi_deduction_by_bill,
-        emi_balance: selected.emi_balance,
-
         pan_card_holder: selected.pan_card_holder,
         pan_card_number: selected.pan_card_number,
       }));
@@ -386,7 +409,7 @@ const AddPayment = () => {
       <h1 className="text-2xl font-semibold">Add Payment</h1>
 
       {/* ================= STEPPER ================= */}
-      <div className="relative mb-10">
+      <div className="relative mb-10 w-[50%]">
         <div className="flex justify-between relative z-10">
           {steps.map((_, i) => (
             <div key={i}>
@@ -423,108 +446,154 @@ const AddPayment = () => {
 
         {/* ================= STEP 1 Warehouse Details ================= */}
         {currentStep === 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* DISTRICT */}
-            <FormField label="District *" error={errors.district_name}>
-              <select
-                name="district_name"
-                value={formData.district_name}
+          <>
+            {/* 🔍 SEARCH WAREHOUSE */}
+            <FormField label="Search Warehouse *" error={errors.warehouse_name}>
+              <Input
+                type="text"
+                placeholder="Search by warehouse name / district / branch..."
+                value={searchTerm}
                 onChange={(e) => {
-                  setFormData({
-                    ...formData,
-                    district_name: e.target.value,
-                    branch_name: "",
-                    warehouse_type: "",
-                    warehouse_name: "",
-                  });
+                  setSearchTerm(e.target.value);
+                  setShowSuggestions(true); // show when typing
                 }}
-                className="w-full border rounded-lg p-2"
-              >
-                <option value="">Select District</option>
-                {[...new Set(warehouses.map((w) => w.district_name))].map(
-                  (d) => (
-                    <option key={d}>{d}</option>
-                  ),
+                onBlur={() => {
+                  setTimeout(() => setShowSuggestions(false), 150);
+                }}
+                onFocus={() => {
+                  if (searchTerm) setShowSuggestions(true);
+                }}
+              />
+            </FormField>
+
+            {/* 🔽 SEARCH RESULTS */}
+            {searchTerm && showSuggestions && (
+              <div className="col-span-2 border rounded-lg max-h-60 overflow-y-auto">
+                {searchedWarehouses.length > 0 ? (
+                  searchedWarehouses.map((w) => (
+                    <div
+                      key={w.id}
+                      onClick={() => {
+                        handleWarehouseSelect(w.warehouse_name);
+                        setSearchTerm(w.warehouse_name);
+                        setShowSuggestions(false); // ✅ hide dropdown
+                      }}
+                      className="p-3 cursor-pointer hover:bg-gray-100 border-b"
+                    >
+                      <div className="font-medium">{w.warehouse_name}</div>
+                      <div className="text-sm text-gray-500">
+                        {w.branch_name}, {w.district_name}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3 text-gray-500">No warehouse found</div>
                 )}
-              </select>
-            </FormField>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* DISTRICT */}
+              <FormField label="District *" error={errors.district_name}>
+                <select
+                  name="district_name"
+                  value={formData.district_name}
+                  onChange={(e) => {
+                    setFormData({
+                      ...formData,
+                      district_name: e.target.value,
+                      branch_name: "",
+                      warehouse_type: "",
+                      warehouse_name: "",
+                    });
+                  }}
+                  className="w-full border rounded-lg p-2"
+                >
+                  <option value="">Select District</option>
+                  {[...new Set(warehouses.map((w) => w.district_name))].map(
+                    (d) => (
+                      <option key={d}>{d}</option>
+                    ),
+                  )}
+                </select>
+              </FormField>
 
-            {/* BRANCH */}
-            <FormField label="Branch *" error={errors.branch_name}>
-              <select
-                name="branch_name"
-                value={formData.branch_name}
-                onChange={(e) => {
-                  setFormData({
-                    ...formData,
-                    branch_name: e.target.value,
-                    warehouse_type: "",
-                    warehouse_name: "",
-                  });
-                }}
-                className="w-full border rounded-lg p-2"
-                disabled={!formData.district_name}
-              >
-                <option value="">Select Branch</option>
-                {filteredBranches.map((b) => (
-                  <option key={b}>{b}</option>
-                ))}
-              </select>
-            </FormField>
+              {/* BRANCH */}
+              <FormField label="Branch *" error={errors.branch_name}>
+                <select
+                  name="branch_name"
+                  value={formData.branch_name}
+                  onChange={(e) => {
+                    setFormData({
+                      ...formData,
+                      branch_name: e.target.value,
+                      warehouse_type: "",
+                      warehouse_name: "",
+                    });
+                  }}
+                  className="w-full border rounded-lg p-2"
+                  disabled={!formData.district_name}
+                >
+                  <option value="">Select Branch</option>
+                  {filteredBranches.map((b) => (
+                    <option key={b}>{b}</option>
+                  ))}
+                </select>
+              </FormField>
 
-            {/* TYPE */}
-            <FormField label="Warehouse Type *">
-              <select
-                name="warehouse_type"
-                value={formData.warehouse_type}
-                onChange={(e) => {
-                  setFormData({
-                    ...formData,
-                    warehouse_type: e.target.value,
-                    warehouse_name: "",
-                  });
-                }}
-                className="w-full border rounded-lg p-2"
-                disabled={!formData.branch_name}
-              >
-                <option value="">Select Type</option>
-                {filteredTypes.map((t) => (
-                  <option key={t}>{t}</option>
-                ))}
-              </select>
-            </FormField>
+              {/* TYPE */}
+              <FormField label="Warehouse Type *">
+                <select
+                  name="warehouse_type"
+                  value={formData.warehouse_type}
+                  onChange={(e) => {
+                    setFormData({
+                      ...formData,
+                      warehouse_type: e.target.value,
+                      warehouse_name: "",
+                    });
+                  }}
+                  className="w-full border rounded-lg p-2"
+                  disabled={!formData.branch_name}
+                >
+                  <option value="">Select Type</option>
+                  {filteredTypes.map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+              </FormField>
 
-            {/* WAREHOUSE NAME */}
-            <FormField label="Warehouse Name *" error={errors.warehouse_name}>
-              <select
-                value={formData.warehouse_name}
-                onChange={(e) => handleWarehouseSelect(e.target.value)}
-                className="w-full border rounded-lg p-2"
-                disabled={!formData.warehouse_type}
-              >
-                <option value="">Select Warehouse</option>
-                {filteredWarehouses.map((w) => (
-                  <option key={w.id}>{w.warehouse_name}</option>
-                ))}
-              </select>
-            </FormField>
+              {/* WAREHOUSE NAME */}
+              <FormField label="Warehouse Name *" error={errors.warehouse_name}>
+                <select
+                  value={formData.warehouse_name}
+                  onChange={(e) => handleWarehouseSelect(e.target.value)}
+                  className="w-full border rounded-lg p-2"
+                  disabled={!formData.warehouse_type}
+                >
+                  <option value="">Select Warehouse</option>
+                  {filteredWarehouses.map((w) => (
+                    <option key={w.id}>{w.warehouse_name}</option>
+                  ))}
+                </select>
+              </FormField>
 
-            <FormField label="Warehouse No">
-              <Input
-                value={formData.warehouse_no}
-                readOnly
-                placeholder="Warehouse No"
-              />
-            </FormField>
+              <FormField label="Warehouse No">
+                <Input
+                  value={formData.warehouse_no}
+                  readOnly
+                  placeholder="Warehouse No"
+                />
+              </FormField>
 
-            <FormField label="PAN Number">
-              <Input
-                value={formData.pan_card_number}
-                readOnly
-                placeholder="PAN Number"
-              />
-            </FormField>
-          </div>
+              <FormField label="PAN Number">
+                <Input
+                  value={formData.pan_card_number}
+                  readOnly
+                  placeholder="PAN Number"
+                />
+              </FormField>
+            </div>
+          </>
         )}
 
         {/* ================= STEP 2 Bill Details ================= */}
@@ -554,10 +623,31 @@ const AddPayment = () => {
                 value={formData.month}
                 onChange={(e) => {
                   const month = e.target.value;
+
+                  const days = getDaysInMonth(month);
+
+                  // Extract year from financial year (2026-27 → 2026)
+                  const year = formData.financial_year
+                    ? formData.financial_year.split("-")[0]
+                    : "";
+
+                  const monthIndex = months.indexOf(month) + 1;
+                  const formattedMonth = String(monthIndex).padStart(2, "0");
+
+                  let fromDate = "";
+                  let toDate = "";
+
+                  if (month && year) {
+                    fromDate = `01/${formattedMonth}/${year}`;
+                    toDate = `${days}/${formattedMonth}/${year}`;
+                  }
+
                   setFormData({
                     ...formData,
                     month,
-                    number_of_days: getDaysInMonth(month),
+                    number_of_days: days,
+                    from_date: fromDate,
+                    to_date: toDate,
                   });
                 }}
                 className="w-full border rounded-lg p-2"
@@ -573,7 +663,34 @@ const AddPayment = () => {
               <Input
                 name="financial_year"
                 value={formData.financial_year}
-                onChange={handleChange}
+                onChange={(e) => {
+                  const financial_year = e.target.value;
+
+                  const month = formData.month;
+                  const days = getDaysInMonth(month);
+
+                  const year = financial_year
+                    ? financial_year.split("-")[0]
+                    : "";
+
+                  const monthIndex = months.indexOf(month) + 1;
+                  const formattedMonth = String(monthIndex).padStart(2, "0");
+
+                  let fromDate = "";
+                  let toDate = "";
+
+                  if (month && year) {
+                    fromDate = `01/${formattedMonth}/${year}`;
+                    toDate = `${days}/${formattedMonth}/${year}`;
+                  }
+
+                  setFormData({
+                    ...formData,
+                    financial_year,
+                    from_date: fromDate,
+                    to_date: toDate,
+                  });
+                }}
                 placeholder="Financial Year"
               />
             </FormField>
@@ -605,6 +722,63 @@ const AddPayment = () => {
                 onChange={handleChange}
                 placeholder="Commodity"
               />
+            </FormField>
+
+            <FormField label="Crop Year *">
+              <select
+                name="crop_year"
+                value={formData.crop_year}
+                onChange={(e) => {
+                  const cropYear = e.target.value;
+
+                  const cropData = selectedWarehouse?.cropData?.find(
+                    (c) => c.crop_year === cropYear,
+                  );
+
+                  setFormData({
+                    ...formData,
+                    crop_year: cropYear,
+
+                    // ✅ BILLING
+                    rate: cropData?.scheme_rate_amount || 0,
+
+                    // ✅ IMPORTANT FIELDS FOR DB
+                    scheme: cropData?.scheme || "",
+                    scheme_rate_amount: cropData?.scheme_rate_amount || 0,
+
+                    actual_storage_capacity:
+                      cropData?.actual_storage_capacity || 0,
+                    approved_storage_capacity:
+                      cropData?.approved_storage_capacity || 0,
+
+                    bank_solvency_affidavit_amount:
+                      cropData?.bank_solvency_affidavit_amount || 0,
+
+                    bank_solvency_certificate_amount:
+                      cropData?.bank_solvency_certificate_amount || 0,
+
+                    bank_solvency_deduction_by_bill:
+                      cropData?.bank_solvency_deduction_by_bill || 0,
+
+                    bank_solvency_balance:
+                      cropData?.bank_solvency_balance_amount || 0,
+
+                    total_emi: cropData?.total_emi || 0,
+                    emi_deduction_by_bill: cropData?.emi_deduction_by_bill || 0,
+                    emi_balance: cropData?.balance_amount_emi || 0,
+                  });
+                }}
+                className="w-full border rounded-lg p-2"
+                disabled={!selectedWarehouse}
+              >
+                <option value="">Select Crop Year</option>
+
+                {selectedWarehouse?.cropData?.map((c) => (
+                  <option key={c.crop_year} value={c.crop_year}>
+                    {c.crop_year}
+                  </option>
+                ))}
+              </select>
             </FormField>
 
             <FormField label="Rate *" error={errors.rate}>
@@ -660,7 +834,7 @@ const AddPayment = () => {
         )}
 
         {/* ================= STEP 3 Scientific Capacity ================= */}
-        {currentStep === 2 && (
+        {/* {currentStep === 2 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="Scientific Capacity">
               <Input
@@ -701,10 +875,10 @@ const AddPayment = () => {
               />
             </FormField>
           </div>
-        )}
+        )} */}
 
         {/* ================= STEP 4 Deductions ================= */}
-        {currentStep === 3 && (
+        {currentStep === 2 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="TDS">
               <Input
@@ -859,7 +1033,7 @@ const AddPayment = () => {
         )}
 
         {/* ================= STEP 5 Payments ================= */}
-        {currentStep === 4 && (
+        {/* {currentStep === 4 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="Payment By">
               <Input
@@ -889,7 +1063,7 @@ const AddPayment = () => {
               />
             </FormField>
           </div>
-        )}
+        )} */}
 
         {/* ================= STEP 6 Preview ================= */}
         {/* {currentStep === 5 && (
@@ -927,7 +1101,7 @@ const AddPayment = () => {
         )} */}
 
         {/* ================= STEP 7 Remarks ================= */}
-        {currentStep === 5 && (
+        {currentStep === 3 && (
           <FormField label="Remarks">
             <textarea
               name="remarks"
