@@ -150,6 +150,7 @@ const ViewPayment = () => {
           <Field label="To Date" value={currentPayment.to_date} />
 
           <Field label="Commodity" value={currentPayment.commodity} />
+          <Field label="Crop Year" value={currentPayment.crop_year} />
           <Field label="Rate" value={currentPayment.rate} />
           <Field
             label="Rent Bill Amount"
@@ -167,7 +168,7 @@ const ViewPayment = () => {
         </Section>
 
         {/* Scientific Capacity */}
-        <Section title="Scientific Capacity">
+        {/* <Section title="Scientific Capacity">
           <Field
             label="Scientific Capacity"
             value={currentPayment.scientific_capacity}
@@ -178,7 +179,7 @@ const ViewPayment = () => {
             label="Rent Amount On Scientific Capacity"
             value={currentPayment.rent_amount_on_scientific_capacity}
           />
-        </Section>
+        </Section> */}
 
         {/* Deductions */}
         <Section title="Deductions">
@@ -216,28 +217,28 @@ const ViewPayment = () => {
             label="Other Deduction Reason"
             value={currentPayment.other_deductions_reason}
           />
-
-          {/* MOVED HERE (correct position like AddPayment) */}
-          <Field
-            label="Security Fund Amount"
-            value={currentPayment.security_fund_amount}
-          />
-        </Section>
-
-        {/* Payment Details */}
-        <Section title="Payment Details">
           <Field
             label="Pay To JVS Amount"
             value={currentPayment.pay_to_jvs_amount}
           />
-          <Field label="Payment By" value={currentPayment.payment_by} />
-          <Field label="Payment Date" value={currentPayment.payment_date} />
-          <Field label="QTR" value={currentPayment.qtr} />
-          <Field
-            label="Net Amount Payable"
-            value={currentPayment.net_amount_payable}
-          />
+
+          {/* MOVED HERE (correct position like AddPayment) */}
+          {/* <Field
+            label="Security Fund Amount"
+            value={currentPayment.security_fund_amount}
+          /> */}
         </Section>
+
+        {/* Payment Details */}
+        {currentPayment.payment_by && currentPayment.payment_date && currentPayment.qtr !== "0" && (
+          <Section title="Payment Details">
+            <Field label="Payment By" value={currentPayment.payment_by} />
+            <Field label="Payment Date" value={currentPayment.payment_date} />
+            <Field label="QTR" value={currentPayment.qtr} />
+            <Field label="Net Amount Payable" value={currentPayment.net_amount_payable} />
+        </Section>
+        )}
+        
 
         {/* Remarks */}
         <Section title="Remarks">

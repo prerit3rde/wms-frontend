@@ -130,6 +130,8 @@ const AddPayment = () => {
 
   const [selectedWarehouse, setSelectedWarehouse] = useState(null);
 
+  const [isTdsEdited, setIsTdsEdited] = useState(false);
+
   const [formData, setFormData] = useState({
     district_name: "",
     branch_name: "",
@@ -222,21 +224,53 @@ const AddPayment = () => {
 
   useEffect(() => {
     const billAmount = Number(formData.bill_amount || 0);
-    const actualPassed = billAmount;
 
-    const tds = billAmount * 0.1;
-    const deduction20 = billAmount * 0.2;
+    const calculatedTDS = billAmount * 0.1;
 
-    const payToJVS = billAmount - tds - deduction20;
+    const finalTDS = isTdsEdited
+      ? Number(formData.tds || 0) // user value
+      : calculatedTDS; // auto value
+
+    const totalDeductions =
+      finalTDS +
+      Number(formData.amount_deducted_against_gain_loss || 0) +
+      Number(formData.emi_amount || 0) +
+      Number(formData.deduction_20_percent || 0) +
+      Number(formData.penalty || 0) +
+      Number(formData.medicine || 0) +
+      Number(formData.emi_fdr_interest || 0) +
+      Number(formData.gain_shortage_deduction || 0) +
+      Number(formData.stock_shortage_deduction || 0) +
+      Number(formData.bank_solvancy || 0) +
+      Number(formData.insurance || 0) +
+      Number(formData.other_deduction_amount || 0);
+
+    const payToJVS = billAmount - totalDeductions;
 
     setFormData((prev) => ({
       ...prev,
-      actual_passed_amount: actualPassed.toFixed(2),
-      tds: tds.toFixed(2),
-      deduction_20_percent: deduction20.toFixed(2),
+
+      // ✅ ALWAYS UPDATE if NOT edited
+      tds: isTdsEdited ? prev.tds : calculatedTDS.toFixed(2),
+
+      actual_passed_amount: billAmount.toFixed(2),
       pay_to_jvs_amount: payToJVS.toFixed(2),
     }));
-  }, [formData.bill_amount]);
+  }, [
+    formData.bill_amount,
+    formData.amount_deducted_against_gain_loss,
+    formData.emi_amount,
+    formData.deduction_20_percent,
+    formData.penalty,
+    formData.medicine,
+    formData.emi_fdr_interest,
+    formData.gain_shortage_deduction,
+    formData.stock_shortage_deduction,
+    formData.bank_solvancy,
+    formData.insurance,
+    formData.other_deduction_amount,
+    isTdsEdited, // ✅ important
+  ]);
 
   /* ================= FETCH WAREHOUSES ================= */
   useEffect(() => {
@@ -318,6 +352,10 @@ const AddPayment = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === "tds") {
+      setIsTdsEdited(true); // ✅ user manually changed
+    }
 
     setFormData((prev) => ({
       ...prev,
@@ -609,12 +647,20 @@ const AddPayment = () => {
             </FormField>
 
             <FormField label="Bill Type">
-              <Input
+              <select
                 name="bill_type"
                 value={formData.bill_type}
                 onChange={handleChange}
-                placeholder="Bill Type"
-              />
+                className="w-full border rounded-lg p-2"
+                disabled={!formData.branch_name}
+              >
+                <option value="">Select Bill Type</option>
+                {filteredTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
             </FormField>
 
             <FormField label="Month *" error={errors.month}>
@@ -1020,7 +1066,7 @@ const AddPayment = () => {
               />
             </FormField>
 
-            <FormField label="Security Fund Amount">
+            {/* <FormField label="Security Fund Amount">
               <Input
                 type="number"
                 name="security_fund_amount"
@@ -1028,7 +1074,7 @@ const AddPayment = () => {
                 onChange={handleChange}
                 placeholder="Security Fund Amount"
               />
-            </FormField>
+            </FormField> */}
           </div>
         )}
 

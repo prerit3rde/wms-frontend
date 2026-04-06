@@ -35,11 +35,30 @@ const PaymentList = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
+  const [cropYear, setCropYear] = useState("");
+  const [cropYears, setCropYears] = useState([]);
+
   const [filterOptions, setFilterOptions] = useState({
     districts: [],
     branches: [],
     warehouseNames: [],
   });
+
+  const fetchCropYears = async () => {
+    try {
+      const res = await axios.get("/warehouses");
+
+      const allYears = res.data.data.flatMap(
+        (w) => w.cropData?.map((c) => c.crop_year) || [],
+      );
+
+      const uniqueYears = [...new Set(allYears)];
+
+      setCropYears(uniqueYears);
+    } catch (error) {
+      console.error("Failed to fetch crop years");
+    }
+  };
 
   /* ================= FETCH FILTER OPTIONS ================= */
   const fetchFilters = async () => {
@@ -48,6 +67,7 @@ const PaymentList = () => {
   };
   useEffect(() => {
     fetchFilters();
+    fetchCropYears();
   }, []);
 
   /* ================= FETCH PAYMENTS ================= */
@@ -64,6 +84,7 @@ const PaymentList = () => {
         warehouse_type: warehouseType,
         from_date: fromDate,
         to_date: toDate,
+        crop_year: cropYear,
       }),
     );
   }, [
@@ -78,6 +99,7 @@ const PaymentList = () => {
     warehouseType,
     fromDate,
     toDate,
+    cropYear
   ]);
 
   /* ================= CASCADE LOGIC ================= */
@@ -111,6 +133,7 @@ const PaymentList = () => {
       warehouseName ||
       fromDate ||
       toDate ||
+      cropYear ||
       sortOption !== "date_desc"
     );
   }, [
@@ -121,6 +144,7 @@ const PaymentList = () => {
     warehouseName,
     fromDate,
     toDate,
+    cropYear,
     sortOption,
   ]);
 
@@ -134,6 +158,7 @@ const PaymentList = () => {
     setFromDate("");
     setToDate("");
     dispatch(setPage(1));
+    setCropYear("");
   };
 
   const formatDate = (date) => {
@@ -646,7 +671,7 @@ const PaymentList = () => {
           </div>
 
           {/* DATE FILTER (NOW TOP ROW) */}
-          <FormField label="From Date">
+          {/* <FormField label="From Date">
             <input
               type="date"
               value={fromDate}
@@ -667,6 +692,25 @@ const PaymentList = () => {
               }}
               className="px-4 py-2 border rounded-lg cursor-pointer"
             />
+          </FormField> */}
+
+          {/* Sort By Crop Year */}
+          <FormField label="Sort By Crop Year">
+            <select
+              value={cropYear}
+              onChange={(e) => {
+                setCropYear(e.target.value);
+                dispatch(setPage(1));
+              }}
+              className="px-4 py-2 border rounded-lg cursor-pointer"
+            >
+              <option value="">Select Crop Years</option>
+              {cropYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
           </FormField>
 
           {/* SORT */}

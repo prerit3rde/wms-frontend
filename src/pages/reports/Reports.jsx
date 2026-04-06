@@ -3,6 +3,7 @@ import Button from "../../components/global/Button";
 import Table from "../../components/global/Table";
 import axios from "../../services/axios";
 import toast from "react-hot-toast";
+import { Download, Trash2 } from "lucide-react";
 
 const reportTypes = [
   { label: "Bank Solvancy Reports", value: "BANK_SOLVANCY" },
@@ -16,6 +17,9 @@ export default function Reports() {
   const [financialYear, setFinancialYear] = useState("");
 
   const [financialYears, setFinancialYears] = useState([]);
+
+  const [month, setMonth] = useState("");
+
   const [previewData, setPreviewData] = useState([]);
   const [reports, setReports] = useState([]);
 
@@ -61,7 +65,7 @@ export default function Reports() {
       setLoading(true);
 
       const res = await axios.get("/reports/preview", {
-        params: { reportType, financialYear },
+        params: { reportType, financialYear, month },
       });
 
       const data = res.data.data || [];
@@ -69,7 +73,7 @@ export default function Reports() {
       if (data.length === 0) {
         setPreviewData([]);
         setNoDataMessage(
-          `No data found for ${getReportLabel(reportType)} for financial year ${financialYear}`,
+          `No data found for ${getReportLabel(reportType)} for financial year ${financialYear} of month ${month}`,
         );
       } else {
         setPreviewData(data);
@@ -95,6 +99,7 @@ export default function Reports() {
       await axios.post("/reports/generate", {
         reportType,
         financialYear,
+        month,
       });
 
       toast.success("Report Generated Successfully");
@@ -314,14 +319,83 @@ export default function Reports() {
       key: "created_at",
       render: (value) => new Date(value).toLocaleString(),
     },
+    // {
+    //   label: "Download",
+    //   key: "download",
+    //   render: (_, row) => (
+    //     <Button onClick={() => handleDownload(row.file_path)}>Download</Button>
+    //   ),
+    // },
+    // {
+    //   label: "Delete",
+    //   key: "delete",
+    //   render: (_, row) => (
+    //     <Button
+    //       variant="danger"
+    //       onClick={async () => {
+    //         if (!window.confirm("Delete this report?")) return;
+
+    //         await axios.delete(`/reports/${row.id}`);
+    //         toast.success("Report deleted");
+    //         fetchReports();
+    //       }}
+    //     >
+    //       Delete
+    //     </Button>
+    //   ),
+    // },
     {
-      label: "Download",
-      key: "download",
+      label: "Actions",
+      key: "actions",
       render: (_, row) => (
-        <Button onClick={() => handleDownload(row.file_path)}>Download</Button>
+        <div className="flex items-center gap-2">
+          {/* DOWNLOAD */}
+          <button
+            onClick={() => handleDownload(row.file_path)}
+            className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition cursor-pointer"
+            title="Download"
+          >
+            <Download size={16} />
+          </button>
+
+          {/* DELETE */}
+          <button
+            onClick={async () => {
+              if (!window.confirm("Delete this report?")) return;
+
+              await axios.delete(`/reports/${row.id}`);
+              toast.success("Report deleted");
+              fetchReports();
+            }}
+            className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition cursor-pointer"
+            title="Delete"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
       ),
     },
   ];
+
+  const deductionStartIndex = previewColumns.findIndex((c) => c.key === "tds");
+  const deductionEndIndex = previewColumns.findIndex(
+    (c) => c.key === "other_deductions_reason",
+  );
+
+  const groupHeader =
+    reportType === "TDS"
+      ? [
+          { label: "", colSpan: deductionStartIndex },
+          {
+            label: "Deductions",
+            colSpan: deductionEndIndex - deductionStartIndex + 1,
+          },
+          {
+            label: "",
+            colSpan: previewColumns.length - deductionEndIndex - 1,
+          },
+        ]
+      : null;
 
   return (
     <div className="">
@@ -331,7 +405,7 @@ export default function Reports() {
       </h1>
       <div className="bg-white p-4 rounded-xl shadow flex flex-wrap gap-4 items-end mb-6 p-6 p-6 space-y-4">
         {/* Report Type */}
-        <div className="flex flex-col w-[35%] m-0">
+        <div className="flex flex-col w-[25%] m-0">
           <FormField label="Report Type">
             <select
               className="border rounded-lg px-3 py-2 cursor-pointer"
@@ -349,7 +423,7 @@ export default function Reports() {
         </div>
 
         {/* Financial Year */}
-        <div className="flex flex-col w-[35%] m-0">
+        <div className="flex flex-col w-[25%] m-0">
           <FormField label="Financial Year">
             <select
               className="border rounded-lg px-3 py-2 cursor-pointer"
@@ -360,6 +434,37 @@ export default function Reports() {
               {financialYears.map((fy, index) => (
                 <option key={index} value={fy.financial_year}>
                   {fy.financial_year}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        </div>
+
+        {/* Month */}
+        <div className="flex flex-col w-[25%] m-0">
+          <FormField label="Month">
+            <select
+              className="border rounded-lg px-3 py-2 cursor-pointer"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+            >
+              <option value="">Select</option>
+              {[
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+              ].map((m) => (
+                <option key={m} value={m}>
+                  {m}
                 </option>
               ))}
             </select>
@@ -385,7 +490,77 @@ export default function Reports() {
           {/* ✅ SHOW TABLE */}
           {previewData.length > 0 && (
             <>
-              <Table columns={previewColumns} data={previewData} />
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    {/* ✅ DEDUCTION HEADER (MATCH STYLE) */}
+                    {reportType === "TDS" && (
+                      <tr>
+                        {/* BEFORE */}
+                        <th colSpan={deductionStartIndex}></th>
+
+                        {/* ONLY DEDUCTION HAS BACKGROUND */}
+                        <th
+                          colSpan={deductionEndIndex - deductionStartIndex + 1}
+                          className="bg-gray-200 text-center text-sm font-semibold text-gray-700 border-b border-gray-300 px-6 py-3"
+                        >
+                          Deductions
+                        </th>
+
+                        {/* AFTER */}
+                        <th
+                          colSpan={
+                            previewColumns.length - deductionEndIndex - 1
+                          }
+                        ></th>
+                      </tr>
+                    )}
+
+                    {/* ✅ NORMAL HEADER (EXACT SAME AS GLOBAL) */}
+                    <tr className="bg-gray-100 border-b border-gray-300">
+                      {previewColumns.map((col) => (
+                        <th
+                          key={col.key}
+                          className="px-6 py-3 text-left text-sm font-semibold text-gray-700"
+                        >
+                          {col.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {previewData.length > 0 ? (
+                      previewData.map((row, rowIndex) => (
+                        <tr
+                          key={rowIndex}
+                          className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                        >
+                          {previewColumns.map((column) => (
+                            <td
+                              key={column.key}
+                              className="px-6 py-4 text-sm text-gray-700"
+                            >
+                              {column.render
+                                ? column.render(row[column.key], row)
+                                : row[column.key]}
+                            </td>
+                          ))}
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan={previewColumns.length}
+                          className="px-6 py-4 text-center text-gray-500"
+                        >
+                          No data available
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
               <Button
                 variant="success"

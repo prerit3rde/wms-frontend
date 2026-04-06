@@ -5,6 +5,7 @@ import {
   fetchPaymentById,
   updateExistingPayment,
 } from "../../redux/slices/paymentsSlice";
+import axiosInstance from "../../services/axios";
 import Card from "../../components/global/Card";
 import Button from "../../components/global/Button";
 import Input from "../../components/global/Input";
@@ -13,10 +14,10 @@ import toast from "react-hot-toast";
 const steps = [
   "Warehouse Selection",
   "Billing Details",
-  "Scientific Capacity",
+  // "Scientific Capacity",
   "Deductions",
+  // "Payment",
   // "Preview",
-  "Payment",
   "Remarks",
 ];
 
@@ -88,35 +89,95 @@ const EditPayment = () => {
     remarks: "",
   });
 
+  const [warehouses, setWarehouses] = useState([]);
+  const [selectedWarehouse, setSelectedWarehouse] = useState(null);
+  const [filteredTypes, setFilteredTypes] = useState([]);
+
   const [isTdsManual, setIsTdsManual] = useState(false);
   const [isDeductionManual, setIsDeductionManual] = useState(false);
 
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  const getDaysInMonth = (month) => {
+    const map = {
+      January: 31,
+      February: 28,
+      March: 31,
+      April: 30,
+      May: 31,
+      June: 30,
+      July: 31,
+      August: 31,
+      September: 30,
+      October: 31,
+      November: 30,
+      December: 31,
+    };
+    return map[month] || 0;
+  };
+
+  useEffect(() => {
+    const loadWarehouses = async () => {
+      const res = await axiosInstance.get("/warehouses");
+      setWarehouses(res.data.data || []);
+    };
+    loadWarehouses();
+  }, []);
+
   useEffect(() => {
     const billAmount = Number(formData.bill_amount || 0);
-    const actualPassed = billAmount;
 
-    let tds = formData.tds;
-    let deduction20 = formData.deduction_20_percent;
+    const tdsValue = Number(formData.tds || 0);
 
-    // ONLY AUTO CALCULATE IF NOT MANUAL
-    if (!isTdsManual) {
-      tds = (billAmount * 0.1).toFixed(2);
-    }
+    const totalDeductions =
+      tdsValue +
+      Number(formData.amount_deducted_against_gain_loss || 0) +
+      Number(formData.emi_amount || 0) +
+      Number(formData.deduction_20_percent || 0) +
+      Number(formData.penalty || 0) +
+      Number(formData.medicine || 0) +
+      Number(formData.emi_fdr_interest || 0) +
+      Number(formData.gain_shortage_deduction || 0) +
+      Number(formData.stock_shortage_deduction || 0) +
+      Number(formData.bank_solvancy || 0) +
+      Number(formData.insurance || 0) +
+      Number(formData.other_deduction_amount || 0);
 
-    if (!isDeductionManual) {
-      deduction20 = (billAmount * 0.2).toFixed(2);
-    }
-
-    const payToJVS = billAmount - Number(tds || 0) - Number(deduction20 || 0);
+    const payToJVS = billAmount - totalDeductions;
 
     setFormData((prev) => ({
       ...prev,
-      actual_passed_amount: actualPassed.toFixed(2),
-      tds: Number(tds || 0).toFixed(2),
-      deduction_20_percent: Number(deduction20 || 0).toFixed(2),
+      actual_passed_amount: billAmount.toFixed(2),
       pay_to_jvs_amount: payToJVS.toFixed(2),
     }));
-  }, [formData.bill_amount]);
+  }, [
+    formData.bill_amount,
+    formData.tds, // ✅ IMPORTANT (this was missing logic behavior)
+    formData.amount_deducted_against_gain_loss,
+    formData.emi_amount,
+    formData.deduction_20_percent,
+    formData.penalty,
+    formData.medicine,
+    formData.emi_fdr_interest,
+    formData.gain_shortage_deduction,
+    formData.stock_shortage_deduction,
+    formData.bank_solvancy,
+    formData.insurance,
+    formData.other_deduction_amount,
+  ]);
 
   /* ================= FETCH PAYMENT ================= */
   useEffect(() => {
@@ -133,8 +194,28 @@ const EditPayment = () => {
       ) {
         setCurrentStep(6); // Jump to Remarks
       }
+
+      const selected = warehouses.find(
+        (w) => w.warehouse_name === currentPayment.warehouse_name,
+      );
+
+      if (selected) {
+        setSelectedWarehouse(selected);
+      }
     }
-  }, [currentPayment]);
+  }, [currentPayment, warehouses]);
+
+  useEffect(() => {
+    if (!formData.branch_name) return;
+
+    const types = warehouses.filter(
+      (w) =>
+        w.branch_name === formData.branch_name &&
+        w.district_name === formData.district_name,
+    );
+
+    setFilteredTypes([...new Set(types.map((w) => w.warehouse_type))]);
+  }, [formData.branch_name, formData.district_name, warehouses]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -316,32 +397,97 @@ const EditPayment = () => {
             </FormField>
 
             <FormField label="Bill Type">
-              <Input
+              <select
                 name="bill_type"
                 value={formData.bill_type}
                 onChange={handleChange}
-                placeholder="Bill Type"
+                className="w-full border rounded-lg p-2"
                 disabled={isLocked}
-              />
+              >
+                <option value="">Select Bill Type</option>
+                {filteredTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
             </FormField>
 
             <FormField label="Month">
-              <Input
+              <select
                 name="month"
                 value={formData.month}
-                onChange={handleChange}
-                placeholder="Month"
+                onChange={(e) => {
+                  const month = e.target.value;
+                  const days = getDaysInMonth(month);
+
+                  const year = formData.financial_year
+                    ? formData.financial_year.split("-")[0]
+                    : "";
+
+                  const monthIndex = months.indexOf(month) + 1;
+                  const formattedMonth = String(monthIndex).padStart(2, "0");
+
+                  let fromDate = "";
+                  let toDate = "";
+
+                  if (month && year) {
+                    fromDate = `01/${formattedMonth}/${year}`;
+                    toDate = `${days}/${formattedMonth}/${year}`;
+                  }
+
+                  setFormData({
+                    ...formData,
+                    month,
+                    number_of_days: days,
+                    from_date: fromDate,
+                    to_date: toDate,
+                  });
+                }}
+                className="w-full border rounded-lg p-2"
                 disabled={isLocked}
-              />
+              >
+                <option value="">Select Month</option>
+                {months.map((m) => (
+                  <option key={m}>{m}</option>
+                ))}
+              </select>
             </FormField>
 
             <FormField label="Financial Year">
               <Input
                 name="financial_year"
                 value={formData.financial_year}
-                onChange={handleChange}
                 placeholder="Financial Year"
                 disabled={isLocked}
+                onChange={(e) => {
+                  const financial_year = e.target.value;
+
+                  const month = formData.month;
+                  const days = getDaysInMonth(month);
+
+                  const year = financial_year
+                    ? financial_year.split("-")[0]
+                    : "";
+
+                  const monthIndex = months.indexOf(month) + 1;
+                  const formattedMonth = String(monthIndex).padStart(2, "0");
+
+                  let fromDate = "";
+                  let toDate = "";
+
+                  if (month && year) {
+                    fromDate = `01/${formattedMonth}/${year}`;
+                    toDate = `${days}/${formattedMonth}/${year}`;
+                  }
+
+                  setFormData({
+                    ...formData,
+                    financial_year,
+                    from_date: fromDate,
+                    to_date: toDate,
+                  });
+                }}
               />
             </FormField>
 
@@ -373,6 +519,34 @@ const EditPayment = () => {
                 placeholder="Commodity"
                 disabled={isLocked}
               />
+            </FormField>
+
+            <FormField label="Crop Year">
+              <select
+                name="crop_year"
+                value={formData.crop_year}
+                onChange={(e) => {
+                  const cropYear = e.target.value;
+
+                  const cropData = selectedWarehouse?.cropData?.find(
+                    (c) => c.crop_year === cropYear,
+                  );
+
+                  setFormData({
+                    ...formData,
+                    crop_year: cropYear,
+                    rate: cropData?.scheme_rate_amount || 0,
+                  });
+                }}
+                className="w-full border rounded-lg p-2"
+              >
+                <option value="">Select Crop Year</option>
+                {selectedWarehouse?.cropData?.map((c) => (
+                  <option key={c.crop_year} value={c.crop_year}>
+                    {c.crop_year}
+                  </option>
+                ))}
+              </select>
             </FormField>
 
             <FormField label="Rate">
@@ -430,7 +604,7 @@ const EditPayment = () => {
         )}
 
         {/* ================= STEP 3 ================= */}
-        {currentStep === 2 && (
+        {/* {currentStep === 2 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="Scientific Capacity">
               <Input
@@ -473,10 +647,10 @@ const EditPayment = () => {
               />
             </FormField>
           </div>
-        )}
+        )} */}
 
         {/* ================= STEP 4 ================= */}
-        {currentStep === 3 && (
+        {currentStep === 2 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="TDS">
               <Input
@@ -613,12 +787,12 @@ const EditPayment = () => {
                 type="number"
                 name="pay_to_jvs_amount"
                 value={formData.pay_to_jvs_amount}
-                readOnly
                 placeholder="Pay To JVS Amount"
+                onChange={handleChange}
               />
             </FormField>
 
-            <FormField label="Security Fund Amount">
+            {/* <FormField label="Security Fund Amount">
               <Input
                 type="number"
                 name="security_fund_amount"
@@ -626,7 +800,7 @@ const EditPayment = () => {
                 onChange={handleChange}
                 placeholder="Security Fund Amount"
               />
-            </FormField>
+            </FormField> */}
           </div>
         )}
 
@@ -685,7 +859,7 @@ const EditPayment = () => {
           </div>
         )} */}
 
-        {currentStep === 4 && (
+        {/* {currentStep === 4 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="Payment By">
               <Input
@@ -717,10 +891,10 @@ const EditPayment = () => {
               />
             </FormField>
           </div>
-        )}
+        )} */}
 
         {/* ================= STEP 6 ================= */}
-        {currentStep === 5 && (
+        {currentStep === 3 && (
           <FormField label="Remarks">
             <textarea
               name="remarks"

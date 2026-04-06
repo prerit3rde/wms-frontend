@@ -57,14 +57,14 @@ const ViewWarehouse = () => {
       {/* ✅ CARD DESIGN SAME AS PAYMENT */}
       <div className="bg-white border rounded-xl p-6 space-y-8">
         <Section title="Basic Information">
-          <Field label="District" value={currentWarehouse.district_name} />
-          <Field label="Branch" value={currentWarehouse.branch_name} />
+          <Field label="District Name" value={currentWarehouse.district_name} />
+          <Field label="Branch Name" value={currentWarehouse.branch_name} />
           <Field
             label="Warehouse Name"
             value={currentWarehouse.warehouse_name}
           />
           <Field
-            label="Warehouse Owner"
+            label="Warehouse Owner Name"
             value={currentWarehouse.warehouse_owner_name}
           />
           <Field
