@@ -99,7 +99,7 @@ const PaymentList = () => {
     warehouseType,
     fromDate,
     toDate,
-    cropYear
+    cropYear,
   ]);
 
   /* ================= CASCADE LOGIC ================= */
@@ -243,6 +243,13 @@ const PaymentList = () => {
       const cleanedData = allPayments.map((payment) => {
         const obj = { ...payment };
 
+        // ❌ REMOVE THESE FIELDS
+        delete obj.status;
+        delete obj.created_at;
+        delete obj.updated_at;
+        delete obj.is_imported;
+
+        // existing logic
         if (!hasApproved) {
           delete obj.approved_by;
           delete obj.approved_at;
@@ -256,35 +263,82 @@ const PaymentList = () => {
         return obj;
       });
 
+      const fieldOrder = [
+        "id",
+        "district_name",
+        "branch_name",
+        "warehouse_name",
+        "warehouse_owner_name",
+        "warehouse_type",
+        "warehouse_no",
+        "gst_no",
+        "scheme",
+        "scheme_rate_amount",
+        "actual_storage_capacity",
+        "approved_storage_capacity",
+        "bank_solvency_affidavit_amount",
+        "bank_solvency_certificate_amount",
+        "bank_solvency_deduction_by_bill",
+        "bank_solvency_balance",
+        "total_emi",
+        "emi_deduction_by_bill",
+        "emi_balance",
+        "pan_card_holder",
+        "pan_card_number",
+        "rent_bill_number",
+        "bill_type",
+        "month",
+        "financial_year",
+        "from_date",
+        "to_date",
+        "commodity",
+        "rate",
+        "rent_bill_amount",
+        "bill_amount",
+        "actual_passed_amount",
+        "depositers_name",
+        "scientific_capacity",
+        "number_of_days",
+        "per_day_rate",
+        "rent_amount_on_scientific_capacity",
+        "tds",
+        "amount_deducted_against_gain_loss",
+        "emi_amount",
+        "deduction_20_percent",
+        "penalty",
+        "medicine",
+        "emi_fdr_interest",
+        "gain_shortage_deduction",
+        "stock_shortage_deduction",
+        "bank_solvancy",
+        "insurance",
+        "other_deduction_amount",
+        "other_deductions_reason",
+        "pay_to_jvs_amount",
+        "security_fund_amount",
+        "payment_by",
+        "payment_date",
+        "qtr",
+        "remarks",
+      ];
+
       /* ================= FORMAT DATA ================= */
 
       const formattedData = cleanedData.map((row) => {
         const formattedRow = {};
 
-        Object.keys(row).forEach((key) => {
+        fieldOrder.forEach((key) => {
           let value = row[key];
 
-          /* FORMAT DATE FIELDS */
           if (
             key === "approved_at" ||
             key === "rejected_at" ||
-            key === "created_at" ||
-            key === "updated_at"
+            key === "payment_date"
           ) {
             value = formatDate(value);
           }
 
-          /* REPLACE ADMIN ID WITH ADMIN NAME */
-          if (key === "approved_by" || key === "rejected_by") {
-            value = value ? adminName : "";
-          }
-
-          /* FORMAT HEADER NAME */
-          const formattedKey = key
-            .replace(/_/g, " ")
-            .replace(/\b\w/g, (char) => char.toUpperCase());
-
-          formattedRow[formattedKey] = value;
+          formattedRow[key] = value ?? "";
         });
 
         return formattedRow;
@@ -298,26 +352,8 @@ const PaymentList = () => {
         year: "numeric",
       });
 
-      /* ================= CREATE HEADER ROWS ================= */
-
-      const headerRows = [
-        ["Warehouse Management System"],
-        ["Payments Report"],
-        [`Exported By: ${adminName}`],
-        [`Export Date: ${exportDate}`],
-        [],
-      ];
-
       /* ================= CREATE WORKSHEET ================= */
-
-      const worksheet = XLSX.utils.aoa_to_sheet(headerRows);
-
-      /* ================= ADD TABLE ================= */
-
-      XLSX.utils.sheet_add_json(worksheet, formattedData, {
-        origin: "A6",
-        skipHeader: false,
-      });
+      const worksheet = XLSX.utils.json_to_sheet(formattedData);
 
       /* ================= AUTO COLUMN WIDTH ================= */
 
@@ -333,13 +369,6 @@ const PaymentList = () => {
       });
 
       worksheet["!cols"] = columnWidths;
-
-      /* ================= FREEZE TABLE HEADER ================= */
-
-      worksheet["!freeze"] = {
-        xSplit: 0,
-        ySplit: 6,
-      };
 
       /* ================= CREATE WORKBOOK ================= */
 
@@ -492,10 +521,10 @@ const PaymentList = () => {
     bank_solvency_affidavit_amount: "Bank Solvency Affidavit Amount",
     bank_solvency_certificate_amount: "Bank Solvency Certificate Amount",
     bank_solvency_deduction_by_bill: "Bank Solvency Deduction by Bill",
-    bank_solvency_balance_amount: "Balance Amount Bank Solvancy",
+    bank_solvency_balance: "Balance Amount Bank Solvancy",
     total_emi: "Total EMI",
     emi_deduction_by_bill: "EMI Deduction by Bill",
-    balance_amount_emi: "EMI Balance",
+    emi_balance: "EMI Balance",
     pan_card_holder: "PAN Card Holder",
     pan_card_number: "PAN Card Number",
 
@@ -573,7 +602,11 @@ const PaymentList = () => {
       });
 
       // ✅ show backend message
-      toast.success(res.data.message || "Payment imported successfully!");
+      toast.success(res.data.message || "Payment imported successfully!", {
+          style: {
+            maxWidth: "fit-content",
+          }
+      });
 
       // ✅ reset UI
       setShowPreview(false);
@@ -591,7 +624,11 @@ const PaymentList = () => {
       await fetchFilters();
     } catch (error) {
       // ✅ show actual backend error
-      toast.error(error.response?.data?.message || "Import failed!");
+      toast.error(error.response?.data?.message || "Import failed!", {
+          style: {
+            maxWidth: "fit-content",
+          }
+      });
     }
   };
 
@@ -608,11 +645,11 @@ const PaymentList = () => {
 
         <div className="flex gap-3">
           {/* EXPORT BUTTON (ONLY WHEN FILTER ACTIVE) */}
-          {/* {isFilterActive && (
+          {isFilterActive && (
             <Button variant="success" onClick={handleExport}>
               Export Excel
             </Button>
-          )} */}
+          )}
 
           {/* IMPORT */}
           <input
