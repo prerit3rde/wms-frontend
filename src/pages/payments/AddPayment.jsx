@@ -169,7 +169,7 @@ const AddPayment = () => {
     commodity: "",
     crop_year: "",
     rate: 0,
-    rent_bill_amount: 0,
+    total_jv_amount: 0,
 
     bill_amount: 0,
     depositers_name: "",
@@ -182,7 +182,7 @@ const AddPayment = () => {
     tds: "",
     amount_deducted_against_gain_loss: 0,
     emi_amount: 0,
-    deduction_20_percent: "",
+    deduction_20_percent: 0,
     penalty: 0,
     medicine: 0,
     emi_fdr_interest: 0,
@@ -342,6 +342,10 @@ const AddPayment = () => {
         warehouse_name: selected.warehouse_name,
         warehouse_owner_name: selected.warehouse_owner_name,
         warehouse_type: selected.warehouse_type,
+
+        // ✅ AUTO SET BILL TYPE
+        bill_type: selected.warehouse_type,
+
         warehouse_no: selected.warehouse_no,
         gst_no: selected.gst_no,
         pan_card_holder: selected.pan_card_holder,
@@ -391,7 +395,7 @@ const AddPayment = () => {
 
         /* BILLING */
         rate: Number(formData.rate || 0),
-        rent_bill_amount: Number(formData.rent_bill_amount || 0),
+        total_jv_amount: Number(formData.total_jv_amount || 0),
 
         bill_amount: Number(formData.bill_amount || 0),
 
@@ -647,20 +651,13 @@ const AddPayment = () => {
             </FormField>
 
             <FormField label="Bill Type">
-              <select
+              <Input
                 name="bill_type"
                 value={formData.bill_type}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-                disabled={!formData.branch_name}
-              >
-                <option value="">Select Bill Type</option>
-                {filteredTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+                readOnly
+                className="bg-gray-100"
+                placeholder="Auto selected from warehouse"
+              />
             </FormField>
 
             <FormField label="Month *" error={errors.month}>
@@ -741,7 +738,7 @@ const AddPayment = () => {
               />
             </FormField>
 
-            <FormField label="From Date" error={errors.from_date}>
+            {/* <FormField label="From Date" error={errors.from_date}>
               <Input
                 type="text"
                 name="from_date"
@@ -759,7 +756,7 @@ const AddPayment = () => {
                 onChange={handleChange}
                 placeholder="To Date"
               />
-            </FormField>
+            </FormField> */}
 
             <FormField label="Commodity *" error={errors.commodity}>
               <Input
@@ -837,16 +834,6 @@ const AddPayment = () => {
               />
             </FormField>
 
-            <FormField label="Rent Bill Amount">
-              <Input
-                type="number"
-                name="rent_bill_amount"
-                value={formData.rent_bill_amount}
-                onChange={handleChange}
-                placeholder="Rent Bill Amount"
-              />
-            </FormField>
-
             <FormField label="Bill Amount *" error={errors.bill_amount}>
               <Input
                 type="number"
@@ -854,6 +841,16 @@ const AddPayment = () => {
                 value={formData.bill_amount}
                 onChange={handleChange}
                 placeholder="Bill Amount"
+              />
+            </FormField>
+
+            <FormField label="Total JV Amount">
+              <Input
+                type="number"
+                name="total_jv_amount"
+                value={formData.total_jv_amount}
+                onChange={handleChange}
+                placeholder="Total JV Amount"
               />
             </FormField>
 

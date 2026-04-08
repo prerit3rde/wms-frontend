@@ -56,7 +56,7 @@ const EditPayment = () => {
 
     commodity: "",
     rate: "",
-    rent_bill_amount: "",
+    total_jv_amount: "",
     actual_passed_amount: "",
 
     scientific_capacity: "",
@@ -240,7 +240,7 @@ const EditPayment = () => {
         ...formData,
 
         rate: Number(formData.rate || 0),
-        rent_bill_amount: Number(formData.rent_bill_amount || 0),
+        total_jv_amount: Number(formData.total_jv_amount || 0),
         actual_passed_amount: Number(formData.actual_passed_amount || 0),
 
         bill_amount: Number(formData.bill_amount || 0),
@@ -560,13 +560,13 @@ const EditPayment = () => {
               />
             </FormField>
 
-            <FormField label="Rent Bill Amount">
+            <FormField label="Total JV Amount">
               <Input
                 type="number"
-                name="rent_bill_amount"
-                value={formData.rent_bill_amount}
+                name="total_jv_amount"
+                value={formData.total_jv_amount}
                 onChange={handleChange}
-                placeholder="Rent Bill Amount"
+                placeholder="Total JV Amount"
                 disabled={isLocked}
               />
             </FormField>

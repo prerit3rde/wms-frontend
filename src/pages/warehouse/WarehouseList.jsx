@@ -300,13 +300,13 @@ const WarehouseList = () => {
             className="hidden"
           />
 
-          <Button
+          {/* <Button
             variant="secondary"
             onClick={() => fileInputRef.current.click()}
             className="flex gap-2"
           >
             <Import size={16} /> Import Warehouses
-          </Button>
+          </Button> */}
 
           {/* ADD */}
           <Link to="/admin/warehouses/add">

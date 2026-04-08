@@ -146,17 +146,17 @@ const ViewPayment = () => {
           <Field label="Financial Year" value={currentPayment.financial_year} />
 
           {/* DATE (NOW STRING SAFE) */}
-          <Field label="From Date" value={currentPayment.from_date} />
-          <Field label="To Date" value={currentPayment.to_date} />
+          {/* <Field label="From Date" value={currentPayment.from_date} />
+          <Field label="To Date" value={currentPayment.to_date} /> */}
 
           <Field label="Commodity" value={currentPayment.commodity} />
           <Field label="Crop Year" value={currentPayment.crop_year} />
           <Field label="Rate" value={currentPayment.rate} />
-          <Field
-            label="Rent Bill Amount"
-            value={currentPayment.rent_bill_amount}
-          />
           <Field label="Bill Amount" value={currentPayment.bill_amount} />
+          <Field
+            label="Total JV Amount"
+            value={currentPayment.total_jv_amount}
+          />
           <Field
             label="Actual Passed Amount"
             value={currentPayment.actual_passed_amount}

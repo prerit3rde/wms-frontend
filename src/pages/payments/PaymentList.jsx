@@ -38,11 +38,26 @@ const PaymentList = () => {
   const [cropYear, setCropYear] = useState("");
   const [cropYears, setCropYears] = useState([]);
 
+  const [importMode, setImportMode] = useState("update"); // default
+
   const [filterOptions, setFilterOptions] = useState({
     districts: [],
     branches: [],
     warehouseNames: [],
   });
+
+  const formatExcelDate = (value) => {
+    if (!value) return "";
+
+    // ✅ If already formatted string → return
+    if (isNaN(value)) return value;
+
+    // ✅ Convert Excel serial → JS date
+    const excelEpoch = new Date(1899, 11, 30);
+    const date = new Date(excelEpoch.getTime() + value * 86400000);
+
+    return date.toISOString().split("T")[0]; // YYYY-MM-DD
+  };
 
   const fetchCropYears = async () => {
     try {
@@ -582,9 +597,16 @@ const PaymentList = () => {
       const workbook = XLSX.read(data, { type: "array" });
 
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(sheet);
+      const jsonData = XLSX.utils.sheet_to_json(sheet, {
+        raw: false, // ✅ IMPORTANT
+      });
 
-      setPreviewData(jsonData);
+      const formattedData = jsonData.map((row) => ({
+        ...row,
+        payment_date: formatExcelDate(row.payment_date),
+      }));
+
+      setPreviewData(formattedData);
       setShowPreview(true);
 
       // ✅ RESET INPUT (IMPORTANT)
@@ -599,13 +621,14 @@ const PaymentList = () => {
     try {
       const res = await axios.post("/payments/bulk-insert", {
         data: previewData,
+        mode: importMode,
       });
 
       // ✅ show backend message
       toast.success(res.data.message || "Payment imported successfully!", {
-          style: {
-            maxWidth: "fit-content",
-          }
+        style: {
+          maxWidth: "fit-content",
+        },
       });
 
       // ✅ reset UI
@@ -625,9 +648,9 @@ const PaymentList = () => {
     } catch (error) {
       // ✅ show actual backend error
       toast.error(error.response?.data?.message || "Import failed!", {
-          style: {
-            maxWidth: "fit-content",
-          }
+        style: {
+          maxWidth: "fit-content",
+        },
       });
     }
   };
@@ -873,7 +896,20 @@ const PaymentList = () => {
           <Table columns={previewColumns} data={previewData} />
 
           <div className="mt-4 flex gap-2">
-            <Button onClick={handleBulkInsert}>Insert All</Button>
+            <div className="flex gap-4 items-center">
+              <select
+                value={importMode}
+                onChange={(e) => setImportMode(e.target.value)}
+                className="px-3 py-2 border rounded-lg"
+              >
+                <option value="update">Update Existing</option>
+                <option value="insert">Insert New</option>
+              </select>
+
+              <Button onClick={handleBulkInsert}>
+                {importMode === "insert" ? "Insert All" : "Update Data"}
+              </Button>
+            </div>
 
             <Button
               variant="secondary"
