@@ -19,8 +19,13 @@ const Sidebar = () => {
 
   const [expandedMenu, setExpandedMenu] = useState(null);
 
-  const isActive = (path) => location.pathname.startsWith(path);
+  const isActive = (path) => location.pathname === path;
+
   const isMenuExpanded = (menu) => expandedMenu === menu;
+
+  const isParentActive = (submenu) => {
+    return submenu.some((sub) => location.pathname.startsWith(sub.path));
+  };
 
   const toggleMenu = (menu) => {
     setExpandedMenu(expandedMenu === menu ? null : menu);
@@ -82,7 +87,7 @@ const Sidebar = () => {
                 <button
                   onClick={() => toggleMenu(item.label)}
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${
-                    isMenuExpanded(item.label)
+                    isParentActive(item.submenu)
                       ? "bg-gray-800"
                       : "hover:bg-gray-800"
                   }`}

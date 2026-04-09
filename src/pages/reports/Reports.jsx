@@ -20,12 +20,30 @@ export default function Reports() {
 
   const [month, setMonth] = useState("");
 
+  const [cropYear, setCropYear] = useState("");
+  const [cropYears, setCropYears] = useState([]);
+
   const [previewData, setPreviewData] = useState([]);
   const [reports, setReports] = useState([]);
 
   const [loading, setLoading] = useState(false);
 
   const [noDataMessage, setNoDataMessage] = useState("");
+
+  const fetchCropYears = async () => {
+    const res = await axios.get("/warehouses");
+    const years = res.data.data.flatMap(
+      (w) => w.cropData?.map((c) => c.crop_year) || [],
+    );
+
+    setCropYears([...new Set(years)]);
+  };
+
+  useEffect(() => {
+    fetchFinancialYears();
+    fetchReports();
+    fetchCropYears(); // 🔥 ADD THIS
+  }, []);
 
   const getReportLabel = (value) => {
     const found = reportTypes.find((r) => r.value === value);
@@ -65,7 +83,7 @@ export default function Reports() {
       setLoading(true);
 
       const res = await axios.get("/reports/preview", {
-        params: { reportType, financialYear, month },
+        params: { reportType, financialYear, month, cropYear },
       });
 
       const data = res.data.data || [];
@@ -96,15 +114,20 @@ export default function Reports() {
     try {
       setLoading(true);
 
-      await axios.post("/reports/generate", {
+      const res = await axios.post("/reports/generate", {
         reportType,
         financialYear,
         month,
+        cropYear,
       });
 
-      toast.success("Report Generated Successfully");
+      // 🔥 AUTO DOWNLOAD
+      await handleDownload(res.data.file_path);
 
-      fetchReports(); // refresh list
+      toast.success("Report Generated & Downloaded");
+
+      // refresh
+      fetchReports();
 
       // ✅ CLEAR PREVIEW (IMPORTANT)
       setPreviewData([]);
@@ -315,9 +338,19 @@ export default function Reports() {
     },
     { label: "Financial Year", key: "financial_year" },
     {
-      label: "Created At",
+      label: "Generated Date",
       key: "created_at",
-      render: (value) => new Date(value).toLocaleString(),
+      render: (value) => {
+        if (!value) return "";
+
+        const d = new Date(value);
+
+        const day = String(d.getDate()).padStart(2, "0");
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const year = d.getFullYear();
+
+        return `${day}-${month}-${year}`; // ✅ NO TIME
+      },
     },
     // {
     //   label: "Download",
@@ -377,7 +410,9 @@ export default function Reports() {
     },
   ];
 
-  const deductionStartIndex = previewColumns.findIndex((c) => c.key === "tds");
+  const deductionStartIndex = previewColumns.findIndex(
+    (c) => c.key === "emi_amount",
+  );
   const deductionEndIndex = previewColumns.findIndex(
     (c) => c.key === "other_deductions_reason",
   );
@@ -471,6 +506,24 @@ export default function Reports() {
           </FormField>
         </div>
 
+        {/* Crop Year */}
+        <div className="flex flex-col w-[25%] m-0">
+          <FormField label="Crop Year">
+            <select
+              className="border rounded-lg px-3 py-2 cursor-pointer"
+              value={cropYear}
+              onChange={(e) => setCropYear(e.target.value)}
+            >
+              <option value="">Select</option>
+              {cropYears.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        </div>
+
         {/* Preview Button */}
         <Button onClick={handlePreview} disabled={loading}>
           Generate Report
@@ -504,7 +557,7 @@ export default function Reports() {
                           colSpan={deductionEndIndex - deductionStartIndex + 1}
                           className="bg-gray-200 text-center text-sm font-semibold text-gray-700 border-b border-gray-300 px-6 py-3"
                         >
-                          Deductions
+                          Other Deductions
                         </th>
 
                         {/* AFTER */}

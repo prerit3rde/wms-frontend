@@ -1,4 +1,5 @@
-import * as XLSX from "xlsx";
+// import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -46,17 +47,40 @@ const PaymentList = () => {
     warehouseNames: [],
   });
 
+  const formatToYMD = (date) => {
+    const d = new Date(date);
+
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  };
+
   const formatExcelDate = (value) => {
-    if (!value) return "";
+    if (!value) return null;
 
-    // ✅ If already formatted string → return
-    if (isNaN(value)) return value;
+    // ✅ Excel serial number
+    if (!isNaN(value)) {
+      const excelEpoch = new Date(1899, 11, 30);
+      const date = new Date(excelEpoch.getTime() + value * 86400000);
+      return formatToYMD(date);
+    }
 
-    // ✅ Convert Excel serial → JS date
-    const excelEpoch = new Date(1899, 11, 30);
-    const date = new Date(excelEpoch.getTime() + value * 86400000);
+    // ✅ Already Date object
+    if (value instanceof Date) {
+      return formatToYMD(value);
+    }
 
-    return date.toISOString().split("T")[0]; // YYYY-MM-DD
+    if (typeof value === "string") {
+      const parsed = new Date(value);
+
+      if (!isNaN(parsed)) {
+        return formatToYMD(parsed);
+      }
+    }
+
+    return null;
   };
 
   const fetchCropYears = async () => {
@@ -279,7 +303,7 @@ const PaymentList = () => {
       });
 
       const fieldOrder = [
-        "id",
+        "sr_no", // ✅ instead of id
         "district_name",
         "branch_name",
         "warehouse_name",
@@ -307,8 +331,12 @@ const PaymentList = () => {
         "from_date",
         "to_date",
         "commodity",
+
+        // ✅ ADD THIS
+        "crop_year",
+
         "rate",
-        "rent_bill_amount",
+        "total_jv_amount", // 🔥 updated name
         "bill_amount",
         "actual_passed_amount",
         "depositers_name",
@@ -339,11 +367,17 @@ const PaymentList = () => {
 
       /* ================= FORMAT DATA ================= */
 
-      const formattedData = cleanedData.map((row) => {
+      const formattedData = cleanedData.map((row, index) => {
         const formattedRow = {};
 
         fieldOrder.forEach((key) => {
-          let value = row[key];
+          let value;
+
+          if (key === "sr_no") {
+            value = row.id;
+          } else {
+            value = row[key];
+          }
 
           if (
             key === "approved_at" ||
@@ -368,22 +402,100 @@ const PaymentList = () => {
       });
 
       /* ================= CREATE WORKSHEET ================= */
-      const worksheet = XLSX.utils.json_to_sheet(formattedData);
+      // 🔥 Header Labels Mapping
+      const headerMap = {
+        sr_no: "Sr No",
+        district_name: "District Name",
+        branch_name: "Branch Name",
+        warehouse_name: "Warehouse Name",
+        warehouse_owner_name: "Warehouse Owner",
+        warehouse_type: "Warehouse Type",
+        warehouse_no: "Warehouse No",
+        gst_no: "GST No",
+        scheme: "Scheme",
+        scheme_rate_amount: "Scheme Rate Amount",
+        actual_storage_capacity: "Actual Storage Capacity",
+        approved_storage_capacity: "Approved Storage Capacity",
+        bank_solvency_affidavit_amount: "Bank Solvency Affidavit Amount",
+        bank_solvency_certificate_amount: "Bank Solvency Certificate Amount",
+        bank_solvency_deduction_by_bill: "Bank Solvency Deduction",
+        bank_solvency_balance: "Solvency Balance",
+        total_emi: "Total EMI",
+        emi_deduction_by_bill: "EMI Deduction",
+        emi_balance: "EMI Balance",
+        pan_card_holder: "PAN Holder",
+        pan_card_number: "PAN Number",
+        rent_bill_number: "Rent Bill Number",
+        bill_type: "Bill Type",
+        month: "Month",
+        financial_year: "Financial Year",
+        from_date: "From Date",
+        to_date: "To Date",
+        commodity: "Commodity",
+        crop_year: "Crop Year", // ✅ added
+        rate: "Rate",
+        total_jv_amount: "Total JV Amount",
+        bill_amount: "Bill Amount",
+        actual_passed_amount: "Actual Passed Amount",
+        depositers_name: "Depositer Name",
+        scientific_capacity: "Scientific Capacity",
+        number_of_days: "Number of Days",
+        per_day_rate: "Per Day Rate",
+        rent_amount_on_scientific_capacity: "Rent On Scientific Capacity",
+        tds: "TDS",
+        amount_deducted_against_gain_loss: "Gain/Loss Deduction",
+        emi_amount: "EMI Amount",
+        deduction_20_percent: "20% Deduction",
+        penalty: "Penalty",
+        medicine: "Medicine",
+        emi_fdr_interest: "EMI FDR Interest",
+        gain_shortage_deduction: "Gain Shortage",
+        stock_shortage_deduction: "Stock Shortage",
+        bank_solvancy: "Bank Solvency",
+        insurance: "Insurance",
+        other_deduction_amount: "Other Deduction",
+        other_deductions_reason: "Deduction Reason",
+        pay_to_jvs_amount: "Pay to JVS",
+        security_fund_amount: "Security Fund",
+        payment_by: "Payment By",
+        payment_date: "Payment Date",
+        qtr: "QTR",
+        remarks: "Remarks",
+      };
+
+      // 🔥 Convert headers
+      const worksheet = XLSX.utils.json_to_sheet(formattedData, {
+        header: fieldOrder,
+      });
+
+      // Replace header row
+      fieldOrder.forEach((key, index) => {
+        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: index });
+
+        if (worksheet[cellAddress]) {
+          worksheet[cellAddress].v = headerMap[key] || key;
+
+          // ✅ Bold header
+          worksheet[cellAddress].s = {
+            font: { bold: true },
+          };
+        }
+      });
 
       /* ================= AUTO COLUMN WIDTH ================= */
 
-      const columnWidths = Object.keys(formattedData[0]).map((key) => {
-        const maxLength = Math.max(
-          key.length,
-          ...formattedData.map((row) =>
-            row[key] ? row[key].toString().length : 0,
-          ),
-        );
+      // const columnWidths = Object.keys(formattedData[0]).map((key) => {
+      //   const maxLength = Math.max(
+      //     key.length,
+      //     ...formattedData.map((row) =>
+      //       row[key] ? row[key].toString().length : 0,
+      //     ),
+      //   );
 
-        return { wch: Math.min(maxLength + 4, 40) };
-      });
+      //   return { wch: Math.min(maxLength + 4, 40) };
+      // });
 
-      worksheet["!cols"] = columnWidths;
+      // worksheet["!cols"] = columnWidths;
 
       /* ================= CREATE WORKBOOK ================= */
 
@@ -391,7 +503,8 @@ const PaymentList = () => {
 
       XLSX.utils.book_append_sheet(workbook, worksheet, "Payments");
 
-      XLSX.writeFile(workbook, "payments_report.xlsx");
+      // XLSX.writeFile(workbook, "payments_report.xlsx");
+      XLSX.writeFile(workbook, "payments_report.xlsx", { cellStyles: true });
 
       toast.success("Excel exported successfully");
     } catch (error) {
@@ -601,10 +714,34 @@ const PaymentList = () => {
         raw: false, // ✅ IMPORTANT
       });
 
-      const formattedData = jsonData.map((row) => ({
-        ...row,
-        payment_date: formatExcelDate(row.payment_date),
-      }));
+      const normalizeKeys = (row) => {
+        const newRow = {};
+
+        Object.keys(row).forEach((key) => {
+          const cleanKey = key
+            .toString()
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, "_");
+
+          newRow[cleanKey] = row[key];
+        });
+
+        return newRow;
+      };
+
+      const formattedData = jsonData.map((row) => {
+        const normalizedRow = normalizeKeys(row);
+
+        const formattedDate = formatExcelDate(normalizedRow.payment_date);
+
+        return {
+          ...normalizedRow,
+
+          // ✅ ONLY override if valid
+          payment_date: formattedDate || null,
+        };
+      });
 
       setPreviewData(formattedData);
       setShowPreview(true);

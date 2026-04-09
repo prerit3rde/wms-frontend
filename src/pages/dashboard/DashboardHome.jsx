@@ -35,6 +35,22 @@ const DashboardHome = () => {
 
   const recentPayments = payments.slice(0, 5);
 
+  const handleDownloadSample = (type) => {
+    const apiUrl = import.meta.env.VITE_API_URL;
+
+    // remove /api from base URL
+    const baseURL = apiUrl.replace("/api", "");
+
+    const fileName =
+      type === "payment"
+        ? "payment_fy_variation_20.xlsx"
+        : "warehouse_import_updated.xlsx";
+
+    const url = `${baseURL}/samples/${fileName}`;
+
+    window.open(url, "_blank"); // cleaner
+  };
+
   return (
     <div className="space-y-8">
       {/* PAGE TITLE */}
@@ -142,6 +158,30 @@ const DashboardHome = () => {
           </div>
         </Card>
       </div>
+
+      <Card className="lg:col-span-2">
+        <h2 className="text-lg font-semibold mb-4">
+          Download Sample Excel Sheets
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* PAYMENT SAMPLE */}
+          <button
+            onClick={() => handleDownloadSample("payment")}
+            className="cursor-pointer border border-blue-500 text-blue-600 py-3 rounded-lg hover:bg-blue-50 transition"
+          >
+            Download Payment Sample
+          </button>
+
+          {/* WAREHOUSE SAMPLE */}
+          <button
+            onClick={() => handleDownloadSample("warehouse")}
+            className="cursor-pointer border border-purple-500 text-purple-600 py-3 rounded-lg hover:bg-purple-50 transition"
+          >
+            Download Warehouse Sample
+          </button>
+        </div>
+      </Card>
 
       {/* FOOTER */}
       <div className="text-center text-sm text-gray-500 pt-6">
