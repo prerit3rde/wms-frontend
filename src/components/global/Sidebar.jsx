@@ -9,6 +9,7 @@ import {
   FileTextIcon,
   UserRoundPen,
   LogOut,
+  BanknoteArrowDown,
 } from "lucide-react";
 import { logout } from "../../redux/slices/authSlice";
 
@@ -53,7 +54,7 @@ const Sidebar = () => {
     },
     {
       label: "Payments",
-      icon: <FileText size={20} />,
+      icon: <BanknoteArrowDown size={20} />,
       submenu: [
         { label: "Payments List", path: "/admin/payments" },
         { label: "Add New Payment", path: "/admin/payments/add" },

@@ -10,7 +10,7 @@ import Button from "../../components/global/Button";
 import Input from "../../components/global/Input";
 import axios from "../../services/axios";
 import toast from "react-hot-toast";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown, Trash2 } from "lucide-react";
 
 const EditWarehouse = () => {
   const { id } = useParams();
@@ -22,6 +22,21 @@ const EditWarehouse = () => {
   );
 
   const [types, setTypes] = useState([]);
+
+  const [openAccordion, setOpenAccordion] = useState(0);
+
+  const removeCropYear = (index) => {
+    if (cropData.length === 1) return;
+
+    const updated = cropData.filter((_, i) => i !== index);
+    setCropData(updated);
+
+    if (index > 0) {
+      setOpenAccordion(index - 1);
+    } else {
+      setOpenAccordion(0);
+    }
+  };
 
   const [form, setForm] = useState({
     district_name: "",
@@ -78,18 +93,18 @@ const EditWarehouse = () => {
         backendCropData.map((item) => ({
           crop_year: item.crop_year || "",
           scheme: item.scheme || "",
-          scheme_rate_amount: item.scheme_rate_amount || "",
-          actual_storage_capacity: item.actual_storage_capacity || "",
-          approved_storage_capacity: item.approved_storage_capacity || "",
+          scheme_rate_amount: item.scheme_rate_amount ?? 0,
+          actual_storage_capacity: item.actual_storage_capacity ?? 0,
+          approved_storage_capacity: item.approved_storage_capacity ?? 0,
           is_affidavit: item.is_affidavit,
           bank_solvency_certificate_amount:
-            item.bank_solvency_certificate_amount || "",
+            item.bank_solvency_certificate_amount ?? 0,
           bank_solvency_deduction_by_bill:
-            item.bank_solvency_deduction_by_bill || "",
-          emi_deduction_by_bill: item.emi_deduction_by_bill || "",
+            item.bank_solvency_deduction_by_bill ?? 0,
+          emi_deduction_by_bill: item.emi_deduction_by_bill ?? 0,
           total_emi: item.total_emi || "",
-          balance_amount_emi: item.balance_amount_emi || "",
-          bank_solvency_balance_amount: item.bank_solvency_balance_amount || "",
+          balance_amount_emi: item.balance_amount_emi ?? 0,
+          bank_solvency_balance_amount: item.bank_solvency_balance_amount ?? 0,
         })),
       );
     }
@@ -107,21 +122,6 @@ const EditWarehouse = () => {
 
     setCropData(updated);
   };
-
-  /* ================= AUTO CALC ================= */
-  const affidavitAmount = form.approved_storage_capacity * 50 || 0;
-
-  const totalEMI =
-    (form.actual_storage_capacity * form.scheme_rate_amount) / 2 || 0;
-
-  const solvencyBase = form.is_affidavit
-    ? affidavitAmount
-    : form.bank_solvency_certificate_amount || 0;
-
-  const solvencyBalance =
-    solvencyBase - (form.bank_solvency_deduction_by_bill || 0);
-
-  const emiBalance = totalEMI - (form.emi_deduction_by_bill || 0);
 
   /* ================= HANDLER ================= */
   const handleChange = (e) => {
@@ -240,194 +240,310 @@ const EditWarehouse = () => {
           </Section>
 
           {/* SCHEME */}
-          {cropData.map((item, index) => (
-            <div key={index} className="border rounded-lg border-gray-300 p-6 space-y-6">
+          {cropData.map((item, index) => {
+            const affidavitAmount = item.approved_storage_capacity * 50 || 0;
 
-              {/* Crop Year */}
-              <Section title={`Crop Year ${index + 1}`}>
-                <Grid>
-                  <FormField label="Crop Year">
-                    <Input
-                      value={item.crop_year}
-                      placeholder="e.g. 2024-25"
-                      onChange={(e) =>
-                        handleCropChange(index, "crop_year", e.target.value)
-                      }
-                    />
-                  </FormField>
-                </Grid>
-              </Section>
+            const totalEMI =
+              (item.actual_storage_capacity * item.scheme_rate_amount) / 2 || 0;
 
-              {/* SCHEME */}
-              <Section title="Scheme & Capacity">
-                <Grid>
-                  <FormField label="Scheme">
-                    <Input
-                      value={item.scheme}
-                      onChange={(e) =>
-                        handleCropChange(index, "scheme", e.target.value)
-                      }
-                      placeholder="Scheme"
-                    />
-                  </FormField>
+            const solvencyBase = item.is_affidavit
+              ? affidavitAmount
+              : item.bank_solvency_certificate_amount || 0;
 
-                  <FormField label="Scheme Rate Amount">
-                    <Input
-                      type="number"
-                      value={item.scheme_rate_amount}
-                      onChange={(e) =>
-                        handleCropChange(
-                          index,
-                          "scheme_rate_amount",
-                          e.target.value,
-                        )
-                      }
-                      placeholder="Scheme Rate Amount"
-                    />
-                  </FormField>
+            const solvencyBalance =
+              item.bank_solvency_balance_amount ??
+              solvencyBase - (item.bank_solvency_deduction_by_bill || 0);
 
-                  <FormField label="Actual Storage Capacity">
-                    <Input
-                      type="number"
-                      value={item.actual_storage_capacity}
-                      onChange={(e) =>
-                        handleCropChange(
-                          index,
-                          "actual_storage_capacity",
-                          e.target.value,
-                        )
-                      }
-                      placeholder="Actual Storage Capacity"
-                    />
-                  </FormField>
-
-                  <FormField label="Approved Storage Capacity">
-                    <Input
-                      type="number"
-                      value={item.approved_storage_capacity}
-                      onChange={(e) =>
-                        handleCropChange(
-                          index,
-                          "approved_storage_capacity",
-                          e.target.value,
-                        )
-                      }
-                      placeholder="Approved Storage Capacity"
-                    />
-                  </FormField>
-                </Grid>
-              </Section>
-
-              {/* SOLVENCY */}
-              <Section title="Bank Solvency">
-                <Grid>
-                  <FormField label="Affidavit/Certificate">
-                    <select
-                      value={item.is_affidavit}
-                      onChange={(e) =>
-                        handleCropChange(index, "is_affidavit", e.target.value)
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            const emiBalance =
+              item.balance_amount_emi ??
+              totalEMI - (item.emi_deduction_by_bill || 0);
+            return (
+              <div key={index} className="border rounded-lg overflow-hidden">
+                {/* ✅ HEADER */}
+                <div
+                  className="flex justify-between items-center bg-gray-100 px-4 py-3 cursor-pointer"
+                  onClick={() =>
+                    setOpenAccordion(openAccordion === index ? null : index)
+                  }
+                >
+                  <h2 className="font-semibold">Crop Year {index + 1}</h2>
+                  <div className="flex gap-2 items-center">
+                    {/* DELETE ICON */}
+                    {index !== 0 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeCropYear(index);
+                        }}
+                        className="cursor-pointer text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                    {/* CHEVRON */}
+                    <span
+                      className={`transition-transform duration-300 ${
+                        openAccordion === index ? "rotate-180" : ""
+                      }`}
                     >
-                      <option value="true">Affidavit</option>
-                      <option value="false">Certificate</option>
-                    </select>
-                  </FormField>
+                      <ChevronDown />
+                    </span>
+                  </div>
+                </div>
+                <div
+                  className={`overflow-hidden transition-all duration-300 ${
+                    openAccordion === index
+                      ? "max-h-[2000px] opacity-100"
+                      : "max-h-0 opacity-0"
+                  }`}
+                >
+                  <div className="p-4 space-y-6 border-t">
+                    {/* Crop Year */}
+                    <Section title={`Crop Year ${index + 1}`}>
+                      <Grid>
+                        <FormField label="Crop Year">
+                          <Input
+                            value={item.crop_year}
+                            placeholder="e.g. 2024-25"
+                            onChange={(e) =>
+                              handleCropChange(
+                                index,
+                                "crop_year",
+                                e.target.value,
+                              )
+                            }
+                          />
+                        </FormField>
+                      </Grid>
+                    </Section>
 
-                  <FormField label="Bank Solvency Certificate Amount">
-                    <Input
-                      type="number"
-                      value={item.bank_solvency_certificate_amount}
-                      onChange={(e) =>
-                        handleCropChange(
-                          index,
-                          "bank_solvency_certificate_amount",
-                          e.target.value,
-                        )
-                      }
-                      placeholder="Certificate Amount"
-                    />
-                  </FormField>
+                    {/* SCHEME */}
+                    <Section title="Scheme & Capacity">
+                      <Grid>
+                        <FormField label="Scheme">
+                          <Input
+                            value={item.scheme}
+                            onChange={(e) =>
+                              handleCropChange(index, "scheme", e.target.value)
+                            }
+                            placeholder="Scheme"
+                          />
+                        </FormField>
 
-                  <FormField label="Bank Solvency Deduction by Bill">
-                    <Input
-                      type="number"
-                      value={item.bank_solvency_deduction_by_bill}
-                      onChange={(e) =>
-                        handleCropChange(
-                          index,
-                          "bank_solvency_deduction_by_bill",
-                          e.target.value,
-                        )
-                      }
-                      placeholder="Deduction"
-                    />
-                  </FormField>
+                        <FormField label="Scheme Rate Amount">
+                          <Input
+                            type="number"
+                            value={item.scheme_rate_amount}
+                            onChange={(e) =>
+                              handleCropChange(
+                                index,
+                                "scheme_rate_amount",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="Scheme Rate Amount"
+                          />
+                        </FormField>
 
-                  <FormField label="Balance Amount Bank Solvancy">
-                    <Input
-                      type="number"
-                      value={item.bank_solvency_balance_amount}
-                      onChange={(e) =>
-                        handleCropChange(
-                          index,
-                          "bank_solvency_balance_amount",
-                          e.target.value,
-                        )
-                      }
-                      placeholder="Balance"
-                    />
-                  </FormField>
-                </Grid>
-              </Section>
+                        <FormField label="Actual Storage Capacity">
+                          <Input
+                            type="number"
+                            value={item.actual_storage_capacity}
+                            onChange={(e) =>
+                              handleCropChange(
+                                index,
+                                "actual_storage_capacity",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="Actual Storage Capacity"
+                          />
+                        </FormField>
 
-              {/* EMI */}
-              <Section title="EMI">
-                <Grid>
-                  <FormField label="Total EMI">
-                    <Input
-                      type="number"
-                      value={item.total_emi}
-                      onChange={(e) =>
-                        handleCropChange(index, "total_emi", e.target.value)
-                      }
-                      placeholder="Total EMI"
-                    />
-                  </FormField>
+                        <FormField label="Approved Storage Capacity">
+                          <Input
+                            type="number"
+                            value={item.approved_storage_capacity}
+                            onChange={(e) =>
+                              handleCropChange(
+                                index,
+                                "approved_storage_capacity",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="Approved Storage Capacity"
+                          />
+                        </FormField>
+                      </Grid>
+                    </Section>
 
-                  <FormField label="EMI Deduction by Bill">
-                    <Input
-                      type="number"
-                      value={item.emi_deduction_by_bill}
-                      onChange={(e) =>
-                        handleCropChange(
-                          index,
-                          "emi_deduction_by_bill",
-                          e.target.value,
-                        )
-                      }
-                      placeholder="EMI Deduction by Bill"
-                    />
-                  </FormField>
+                    {/* SOLVENCY */}
+                    <Section title="Bank Solvency">
+                      <Grid>
+                        <FormField label="Affidavit/Certificate">
+                          <select
+                            value={item.is_affidavit}
+                            onChange={(e) =>
+                              handleCropChange(
+                                index,
+                                "is_affidavit",
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                          >
+                            <option value="true">Affidavit</option>
+                            <option value="false">Certificate</option>
+                          </select>
+                        </FormField>
 
-                  <FormField label="EMI Balance">
-                    <Input
-                      type="number"
-                      value={item.balance_amount_emi}
-                      onChange={(e) =>
-                        handleCropChange(
-                          index,
-                          "balance_amount_emi",
-                          e.target.value,
-                        )
-                      }
-                      placeholder="EMI Balance"
-                    />
-                  </FormField>
-                </Grid>
-              </Section>
-            </div>
-          ))}
+                        {item.is_affidavit ? (
+                          <FormField label="Bank Solvency Affidavit Amount">
+                            <Input
+                              value={
+                                item.bank_solvency_affidavit_amount ??
+                                affidavitAmount
+                              }
+                              onChange={(e) =>
+                                handleCropChange(
+                                  index,
+                                  "bank_solvency_affidavit_amount",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          </FormField>
+                        ) : (
+                          <FormField label="Bank Solvency Certificate Amount">
+                            <Input
+                              type="number"
+                              value={item.bank_solvency_certificate_amount}
+                              onChange={(e) =>
+                                handleCropChange(
+                                  index,
+                                  "bank_solvency_certificate_amount",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          </FormField>
+                        )}
+
+                        <FormField label="Bank Solvency Deduction by Bill">
+                          <Input
+                            type="number"
+                            value={item.bank_solvency_deduction_by_bill}
+                            onChange={(e) =>
+                              handleCropChange(
+                                index,
+                                "bank_solvency_deduction_by_bill",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="Deduction"
+                          />
+                        </FormField>
+
+                        <FormField label="Balance Amount Bank Solvancy">
+                          <Input
+                            type="number"
+                            value={
+                              item.bank_solvency_balance_amount ??
+                              solvencyBalance
+                            }
+                            onChange={(e) =>
+                              handleCropChange(
+                                index,
+                                "bank_solvency_balance_amount",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="Balance"
+                          />
+                        </FormField>
+                      </Grid>
+                    </Section>
+
+                    {/* EMI */}
+                    <Section title="EMI">
+                      <Grid>
+                        <FormField label="Total EMI">
+                          <Input
+                            type="number"
+                            value={item.total_emi ?? totalEMI}
+                            onChange={(e) =>
+                              handleCropChange(
+                                index,
+                                "total_emi",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="Total EMI"
+                          />
+                        </FormField>
+
+                        <FormField label="EMI Deduction by Bill">
+                          <Input
+                            type="number"
+                            value={item.emi_deduction_by_bill}
+                            onChange={(e) =>
+                              handleCropChange(
+                                index,
+                                "emi_deduction_by_bill",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="EMI Deduction by Bill"
+                          />
+                        </FormField>
+
+                        <FormField label="EMI Balance">
+                          <Input
+                            type="number"
+                            value={item.balance_amount_emi ?? emiBalance}
+                            onChange={(e) =>
+                              handleCropChange(
+                                index,
+                                "balance_amount_emi",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="EMI Balance"
+                          />
+                        </FormField>
+                      </Grid>
+                    </Section>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          <Button
+            type="button"
+            onClick={() => {
+              const newData = [
+                ...cropData,
+                {
+                  crop_year: "",
+                  scheme: "",
+                  scheme_rate_amount: "",
+                  actual_storage_capacity: "",
+                  approved_storage_capacity: "",
+                  is_affidavit: true,
+                  bank_solvency_certificate_amount: "",
+                  bank_solvency_deduction_by_bill: "",
+                  emi_deduction_by_bill: "",
+                },
+              ];
+
+              setCropData(newData);
+              setOpenAccordion(newData.length - 1);
+            }}
+          >
+            + Add Crop Year
+          </Button>
 
           {/* PAN */}
           <Section title="PAN Details">
