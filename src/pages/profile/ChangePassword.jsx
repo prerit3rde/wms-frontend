@@ -24,7 +24,41 @@ const ChangePassword = () => {
     });
   };
 
+  const getPasswordErrors = (password) => {
+    const errors = [];
+
+    if (password.length < 8) {
+      errors.push("at least 8 characters");
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      errors.push("one uppercase letter");
+    }
+
+    if (!/[a-z]/.test(password)) {
+      errors.push("one lowercase letter");
+    }
+
+    if (!/[0-9]/.test(password)) {
+      errors.push("one number");
+    }
+
+    return errors;
+  };
+
   const handleSubmit = async () => {
+    if (!formData.currentPassword) {
+      toast.error("Current password is required");
+      return;
+    }
+
+    const passwordErrors = getPasswordErrors(formData.newPassword);
+
+    if (passwordErrors.length > 0) {
+      toast.error(`Password must contain ${passwordErrors.join(", ")}`);
+      return;
+    }
+
     if (formData.newPassword !== formData.confirmPassword) {
       toast.error("Passwords do not match");
       return;

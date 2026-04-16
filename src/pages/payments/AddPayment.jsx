@@ -61,6 +61,9 @@ const AddPayment = () => {
       if (!formData.branch_name) newErrors.branch_name = "Branch is required";
       if (!formData.warehouse_name)
         newErrors.warehouse_name = "Warehouse is required";
+      if (!formData.crop_year) {
+        newErrors.crop_year = "Crop year is required";
+      }
     }
 
     if (currentStep === 1) {
@@ -327,6 +330,68 @@ const AddPayment = () => {
     formData.warehouse_type,
     warehouses,
   ]);
+
+  useEffect(() => {
+    if (formData.crop_year && selectedWarehouse?.cropData?.length) {
+      const cropData = selectedWarehouse.cropData.find(
+        (c) => c.crop_year === formData.crop_year,
+      );
+
+      if (cropData) {
+        setFormData((prev) => ({
+          ...prev,
+          rate: cropData.scheme_rate_amount || 0,
+
+          scheme: cropData.scheme || "",
+          scheme_rate_amount: cropData.scheme_rate_amount || 0,
+
+          actual_storage_capacity: cropData.actual_storage_capacity || 0,
+          approved_storage_capacity: cropData.approved_storage_capacity || 0,
+        }));
+      }
+    }
+  }, [formData.crop_year, selectedWarehouse]);
+
+  useEffect(() => {
+    if (formData.warehouse_name && warehouses.length) {
+      const selected = warehouses.find(
+        (w) => w.warehouse_name === formData.warehouse_name,
+      );
+
+      if (selected) {
+        setSelectedWarehouse(selected);
+      }
+    }
+  }, [formData.warehouse_name, warehouses]);
+
+  const getCropYearFromCommodity = (commodity) => {
+    if (!commodity) return "";
+
+    const match = commodity.match(/-(\d{2,4})$/);
+    if (!match) return "";
+
+    const yrStr = match[1];
+    const yr = parseInt(yrStr.slice(-2));
+    const fullYear = 2000 + yr;
+
+    return `${fullYear - 1}-${String(fullYear).slice(-2)}`;
+  };
+
+  useEffect(() => {
+    if (formData.commodity && selectedWarehouse?.cropData?.length) {
+      const yr = getCropYearFromCommodity(formData.commodity);
+
+      const match = selectedWarehouse.cropData.find((c) => c.crop_year === yr);
+
+      if (match) {
+        setFormData((prev) => ({
+          ...prev,
+          crop_year: match.crop_year,
+          rate: match.scheme_rate_amount || 0,
+        }));
+      }
+    }
+  }, [formData.commodity, selectedWarehouse]);
 
   /* ================= AUTO SNAPSHOT ================= */
   const handleWarehouseSelect = (name) => {

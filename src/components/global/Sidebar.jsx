@@ -73,7 +73,7 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-gray-900 text-white min-h-screen sticky top-0 h-full">
+    <aside className="hidden lg:flex flex-col w-64 bg-gray-900 text-white min-h-screen sticky top-0 h-full w-[18%]">
       {/* LOGO */}
       <div className="p-6">
         <h2 className="text-2xl font-bold">WMS</h2>

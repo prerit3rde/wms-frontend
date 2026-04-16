@@ -136,12 +136,26 @@ const EditWarehouse = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const preparedCropData = cropData.map((item) => {
+      const totalEMI =
+        item.total_emi !== null &&
+        item.total_emi !== undefined &&
+        item.total_emi !== ""
+          ? Number(item.total_emi)
+          : (item.actual_storage_capacity * item.scheme_rate_amount) / 2 || 0;
+
+      const emiBalance = totalEMI - (item.emi_deduction_by_bill || 0);
+
+      return {
+        ...item,
+        total_emi: totalEMI,
+        balance_amount_emi: emiBalance,
+      };
+    });
+
     const payload = {
       ...form,
-      cropData,
-      bank_solvency_certificate_amount: form.is_affidavit
-        ? 0
-        : form.bank_solvency_certificate_amount,
+      cropData: preparedCropData,
     };
 
     const result = await dispatch(updateWarehouse({ id, data: payload }));
@@ -300,7 +314,7 @@ const EditWarehouse = () => {
                 >
                   <div className="p-4 space-y-6 border-t">
                     {/* Crop Year */}
-                    <Section title={`Crop Year ${index + 1}`}>
+                    <Section className={"hidden"}>
                       <Grid>
                         <FormField label="Crop Year">
                           <Input
@@ -583,9 +597,9 @@ const EditWarehouse = () => {
   );
 };
 
-const Section = ({ title, children }) => (
+const Section = ({ title, children, className }) => (
   <div>
-    <h2 className="font-semibold mb-4 border-b pb-2">{title}</h2>
+    <h2 className={`font-semibold mb-4 border-b pb-2 ${className}`}>{title}</h2>
     {children}
   </div>
 );

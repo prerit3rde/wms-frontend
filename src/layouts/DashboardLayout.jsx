@@ -10,7 +10,7 @@ const DashboardLayout = () => {
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
 
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col w-[82%]">
         <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
 
         <main className="flex-1 overflow-y-auto p-6">

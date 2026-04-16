@@ -40,9 +40,8 @@ export default function Reports() {
   };
 
   useEffect(() => {
-    fetchFinancialYears();
+    fetchFilterData();
     fetchReports();
-    fetchCropYears(); // 🔥 ADD THIS
   }, []);
 
   const getReportLabel = (value) => {
@@ -50,11 +49,12 @@ export default function Reports() {
     return found ? found.label : value;
   };
 
-  /* ================= FETCH FINANCIAL YEARS ================= */
-  const fetchFinancialYears = async () => {
+  /* ================= FETCH FILTER DATA ================= */
+  const fetchFilterData = async () => {
     try {
       const res = await axios.get("/reports/financial-years");
-      setFinancialYears(res.data.data || []);
+      setFinancialYears(res.data.data.financialYears || []);
+      setCropYears(res.data.data.cropYears || []);
     } catch (err) {
       console.error(err);
     }
@@ -72,8 +72,8 @@ export default function Reports() {
 
   /* ================= PREVIEW REPORT ================= */
   const handlePreview = async () => {
-    if (!reportType || !financialYear) {
-      toast("Please select both fields", {
+    if (!reportType) {
+      toast("Please select a report type", {
         icon: "⚠️",
       });
       return;
@@ -167,10 +167,10 @@ export default function Reports() {
     }
   };
 
-  useEffect(() => {
-    fetchFinancialYears();
-    fetchReports();
-  }, []);
+  // useEffect(() => {
+  //   fetchFinancialYears();
+  //   fetchReports();
+  // }, []);
 
   /* ================= TABLE COLUMNS ================= */
 
@@ -235,10 +235,22 @@ export default function Reports() {
       render: (v, r) => (r.isNoData ? null : v),
     },
     {
+      label: "Crop Year",
+      key: "crop_year",
+      render: (v, r) => (r.isNoData ? null : v),
+    },
+    {
       label: "Period",
       key: "period",
-      render: (_, row) =>
-        row.isNoData ? null : `${row.from_date || ""} to ${row.to_date || ""}`,
+      render: (_, row) => {
+        if (row.isNoData) return null;
+        if (!row.from_date) return "";
+        const d = new Date(row.from_date);
+        return d.toLocaleString("en-IN", {
+          month: "short",
+          year: "2-digit",
+        });
+      },
     },
     {
       label: "Bill Amount",
@@ -336,7 +348,13 @@ export default function Reports() {
       key: "report_type",
       render: (value) => getReportLabel(value),
     },
-    { label: "Financial Year", key: "financial_year" },
+    {
+      label: "Financial Year",
+      key: "financial_year",
+      render: (v) => v || "---",
+    },
+    { label: "Month", key: "month", render: (v) => v || "---" },
+    { label: "Crop Year", key: "crop_year", render: (v) => v || "---" },
     {
       label: "Generated Date",
       key: "created_at",
@@ -420,16 +438,16 @@ export default function Reports() {
   const groupHeader =
     reportType === "TDS"
       ? [
-          { label: "", colSpan: deductionStartIndex },
-          {
-            label: "Deductions",
-            colSpan: deductionEndIndex - deductionStartIndex + 1,
-          },
-          {
-            label: "",
-            colSpan: previewColumns.length - deductionEndIndex - 1,
-          },
-        ]
+        { label: "", colSpan: deductionStartIndex },
+        {
+          label: "Deductions",
+          colSpan: deductionEndIndex - deductionStartIndex + 1,
+        },
+        {
+          label: "",
+          colSpan: previewColumns.length - deductionEndIndex - 1,
+        },
+      ]
       : null;
 
   return (
@@ -467,8 +485,8 @@ export default function Reports() {
             >
               <option value="">Select</option>
               {financialYears.map((fy, index) => (
-                <option key={index} value={fy.financial_year}>
-                  {fy.financial_year}
+                <option key={index} value={fy}>
+                  {fy}
                 </option>
               ))}
             </select>
@@ -532,8 +550,21 @@ export default function Reports() {
 
       {/* ================= PREVIEW TABLE ================= */}
       {(previewData.length > 0 || noDataMessage) && (
-        <div className="bg-white p-4 rounded-xl shadow p-6 max-w-[1217px] overflow-x-auto overflow-y-hidden whitespace-nowrap w-full mb-6">
-          <h2 className="text-xl font-semibold mb-4">Preview Report Data</h2>
+        <div className="bg-white p-4 rounded-xl shadow p-6 w-full mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">
+              Preview Report of {getReportLabel(reportType)}
+            </h2>
+            {previewData.length > 0 && (
+              <Button
+                variant="success"
+                onClick={handleGenerate}
+                disabled={loading}
+              >
+                Generate & Save
+              </Button>
+            )}
+          </div>
 
           {/* ✅ SHOW MESSAGE */}
           {noDataMessage && (
@@ -543,38 +574,31 @@ export default function Reports() {
           {/* ✅ SHOW TABLE */}
           {previewData.length > 0 && (
             <>
-              <div className="overflow-x-auto">
+              <div
+                className={`overflow-x-auto ${previewData.length > 25 ? "max-h-[500px] overflow-y-auto" : ""
+                  }`}
+              >
                 <table className="w-full border-collapse">
                   <thead>
-                    {/* ✅ DEDUCTION HEADER (MATCH STYLE) */}
-                    {reportType === "TDS" && (
-                      <tr>
-                        {/* BEFORE */}
-                        <th colSpan={deductionStartIndex}></th>
-
-                        {/* ONLY DEDUCTION HAS BACKGROUND */}
-                        <th
-                          colSpan={deductionEndIndex - deductionStartIndex + 1}
-                          className="bg-gray-200 text-center text-sm font-semibold text-gray-700 border-b border-gray-300 px-6 py-3"
-                        >
-                          Other Deductions
-                        </th>
-
-                        {/* AFTER */}
-                        <th
-                          colSpan={
-                            previewColumns.length - deductionEndIndex - 1
-                          }
-                        ></th>
+                    {reportType === "TDS" && groupHeader && (
+                      <tr className="bg-gray-200 border-b border-gray-300">
+                        {groupHeader.map((gh, idx) => (
+                          <th
+                            key={idx}
+                            colSpan={gh.colSpan}
+                            className={`px-6 py-2 text-center text-xs font-bold uppercase tracking-wider border-r border-gray-300 last:border-r-0 ${gh.label ? "bg-gray-300 text-gray-800" : ""
+                              }`}
+                          >
+                            {gh.label}
+                          </th>
+                        ))}
                       </tr>
                     )}
-
-                    {/* ✅ NORMAL HEADER (EXACT SAME AS GLOBAL) */}
                     <tr className="bg-gray-100 border-b border-gray-300">
                       {previewColumns.map((col) => (
                         <th
                           key={col.key}
-                          className="px-6 py-3 text-left text-sm font-semibold text-gray-700"
+                          className="px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap"
                         >
                           {col.label}
                         </th>
@@ -592,7 +616,7 @@ export default function Reports() {
                           {previewColumns.map((column) => (
                             <td
                               key={column.key}
-                              className="px-6 py-4 text-sm text-gray-700"
+                              className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap"
                             >
                               {column.render
                                 ? column.render(row[column.key], row)

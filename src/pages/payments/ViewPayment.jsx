@@ -21,22 +21,26 @@ const formatDate = (date) => {
   });
 };
 
+// 🔹 MODERN FIELD (CARD STYLE)
 const Field = ({ label, value }) => {
   if (value === null || value === "" || value === undefined) return null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-3">
-      <div className="text-gray-500 text-sm">{label}</div>
-      <div className="font-medium">{value}</div>
+    <div className="bg-gray-50 rounded-lg p-3 flex flex-col">
+      <span className="text-xs text-gray-500">{label}</span>
+      <span className="font-semibold text-gray-800">{value}</span>
     </div>
   );
 };
 
+// 🔹 MODERN SECTION (CARD + GRID)
 const Section = ({ title, children }) => {
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold border-b pb-2">{title}</h2>
-      {children}
+    <div className="bg-white rounded-2xl shadow-sm border p-5 space-y-4">
+      <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {children}
+      </div>
     </div>
   );
 };
@@ -75,13 +79,21 @@ const ViewPayment = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Payment Details</h1>
-        <div className="flex gap-3">
-          <Button className="flex gap-2" variant="secondary" onClick={() => navigate(-1)}>
-            <ArrowLeft size={16} /> Back To List
+    <div className="max-w-7xl mx-auto px-4 space-y-6">
+
+      {/* 🔥 HEADER */}
+      <div className="flex flex-wrap justify-between items-center gap-3 sticky top-0 bg-white z-10 py-3 border-b">
+        <div>
+          <h1 className="text-2xl font-bold">Payment Details</h1>
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            className="flex gap-2"
+            variant="secondary"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft size={16} /> Back
           </Button>
 
           <Button className="flex gap-2" onClick={handlePrint}>
@@ -106,145 +118,63 @@ const ViewPayment = () => {
         </div>
       </div>
 
-      {/* PAYMENT DETAILS */}
-      <div className="bg-white border rounded-xl p-6 space-y-8">
-        {/* Warehouse Details */}
+      {/* 🔥 CONTENT */}
+      <div className="space-y-5">
+
+        {/* Warehouse */}
         <Section title="Warehouse Details">
-          <Field
-            label="Reference Number"
-            value={currentPayment.reference_number}
-          />
           <Field label="District Name" value={currentPayment.district_name} />
           <Field label="Branch Name" value={currentPayment.branch_name} />
           <Field label="Warehouse Name" value={currentPayment.warehouse_name} />
-          <Field
-            label="Warehouse Owner Name"
-            value={currentPayment.warehouse_owner_name}
-          />
+          <Field label="Warehouse Owner" value={currentPayment.warehouse_owner_name} />
           <Field label="Warehouse Type" value={currentPayment.warehouse_type} />
           <Field label="Warehouse No" value={currentPayment.warehouse_no} />
           <Field label="SR No" value={currentPayment.sr_no} />
-          <Field
-            label="PAN Card Holder"
-            value={currentPayment.pan_card_holder}
-          />
-          <Field
-            label="PAN Card Number"
-            value={currentPayment.pan_card_number}
-          />
-          <Field label="Deposit Name" value={currentPayment.deposit_name} />
+          <Field label="PAN Holder" value={currentPayment.pan_card_holder} />
+          <Field label="PAN Number" value={currentPayment.pan_card_number} />
         </Section>
 
-        {/* Billing Details */}
+        {/* Billing */}
         <Section title="Billing Details">
-          <Field
-            label="Rent Bill Number"
-            value={currentPayment.rent_bill_number}
-          />
+          <Field label="Rent Bill Number" value={currentPayment.rent_bill_number} />
           <Field label="Bill Type" value={currentPayment.bill_type} />
           <Field label="Month" value={currentPayment.month} />
           <Field label="Financial Year" value={currentPayment.financial_year} />
-
-          {/* DATE (NOW STRING SAFE) */}
-          {/* <Field label="From Date" value={currentPayment.from_date} />
-          <Field label="To Date" value={currentPayment.to_date} /> */}
-
           <Field label="Commodity" value={currentPayment.commodity} />
           <Field label="Crop Year" value={currentPayment.crop_year} />
           <Field label="Rate" value={currentPayment.rate} />
           <Field label="Bill Amount" value={currentPayment.bill_amount} />
-          <Field
-            label="Total JV Amount"
-            value={currentPayment.total_jv_amount}
-          />
-          <Field
-            label="Actual Passed Amount"
-            value={currentPayment.actual_passed_amount}
-          />
-          <Field
-            label="Depositer Name"
-            value={currentPayment.depositers_name}
-          />
+          <Field label="Total JV Amount" value={currentPayment.total_jv_amount} />
+          <Field label="Actual Passed Amount" value={currentPayment.actual_passed_amount} />
+          <Field label="Depositer Name" value={currentPayment.depositers_name} />
         </Section>
-
-        {/* Scientific Capacity */}
-        {/* <Section title="Scientific Capacity">
-          <Field
-            label="Scientific Capacity"
-            value={currentPayment.scientific_capacity}
-          />
-          <Field label="Number of Days" value={currentPayment.number_of_days} />
-          <Field label="Per Day Rate" value={currentPayment.per_day_rate} />
-          <Field
-            label="Rent Amount On Scientific Capacity"
-            value={currentPayment.rent_amount_on_scientific_capacity}
-          />
-        </Section> */}
 
         {/* Deductions */}
         <Section title="Deductions">
           <Field label="TDS" value={currentPayment.tds} />
-          <Field
-            label="Amount Deducted Against Gain/Loss"
-            value={currentPayment.amount_deducted_against_gain_loss}
-          />
-          <Field label="EMI Amount" value={currentPayment.emi_amount} />
-          <Field
-            label="20% Deduction"
-            value={currentPayment.deduction_20_percent}
-          />
+          <Field label="EMI" value={currentPayment.emi_amount} />
           <Field label="Penalty" value={currentPayment.penalty} />
-          <Field label="Medicine" value={currentPayment.medicine} />
-          <Field
-            label="EMI FDR Interest"
-            value={currentPayment.emi_fdr_interest}
-          />
-          <Field
-            label="Gain Shortage Deduction"
-            value={currentPayment.gain_shortage_deducton}
-          />
-          <Field
-            label="Stock Shortage Deduction"
-            value={currentPayment.stock_shortage_deduction}
-          />
-          <Field label="Bank Solvency" value={currentPayment.bank_solvancy} />
           <Field label="Insurance" value={currentPayment.insurance} />
-          <Field
-            label="Other Deduction Amount"
-            value={currentPayment.other_deduction_amount}
-          />
-          <Field
-            label="Other Deduction Reason"
-            value={currentPayment.other_deductions_reason}
-          />
-          <Field
-            label="Pay To JVS Amount"
-            value={currentPayment.pay_to_jvs_amount}
-          />
-
-          {/* MOVED HERE (correct position like AddPayment) */}
-          {/* <Field
-            label="Security Fund Amount"
-            value={currentPayment.security_fund_amount}
-          /> */}
+          <Field label="Other Deduction" value={currentPayment.other_deduction_amount} />
+          <Field label="Reason" value={currentPayment.other_deductions_reason} />
         </Section>
 
-        {/* Payment Details */}
+        {/* Payment */}
         {currentPayment.payment_by && currentPayment.payment_date && currentPayment.qtr !== "0" && (
           <Section title="Payment Details">
             <Field label="Payment By" value={currentPayment.payment_by} />
             <Field label="Payment Date" value={currentPayment.payment_date} />
             <Field label="QTR" value={currentPayment.qtr} />
-            <Field label="Net Amount Payable" value={currentPayment.net_amount_payable} />
-        </Section>
+            <Field label="Net Payable" value={currentPayment.net_amount_payable} />
+          </Section>
         )}
-        
 
         {/* Remarks */}
-        <Section title="Remarks">
-          <Field label="Remarks" value={currentPayment.remarks} />
-          {/* <Field label="Status" value={currentPayment.status} /> */}
-        </Section>
+        {currentPayment.remarks && (
+          <Section title="Remarks">
+            <Field label="Remarks" value={currentPayment.remarks} />
+          </Section>
+        )}
 
         {/* Approval Info */}
         {/* <Section title="Approval / Rejection Information">
@@ -255,6 +185,7 @@ const ViewPayment = () => {
           <Field label="Created At" value={formatDate(currentPayment.created_at)} />
           <Field label="Updated At" value={formatDate(currentPayment.updated_at)} />
         </Section> */}
+
       </div>
     </div>
   );

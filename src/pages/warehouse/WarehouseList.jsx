@@ -300,13 +300,13 @@ const WarehouseList = () => {
             className="hidden"
           />
 
-          {/* <Button
+          <Button
             variant="secondary"
             onClick={() => fileInputRef.current.click()}
             className="flex gap-2"
           >
             <Import size={16} /> Import Warehouses
-          </Button> */}
+          </Button>
 
           {/* ADD */}
           <Link to="/admin/warehouses/add">
@@ -348,10 +348,9 @@ const WarehouseList = () => {
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition
-              ${
-                showFilters
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "bg-gray-100 hover:bg-gray-200"
+              ${showFilters
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-gray-100 hover:bg-gray-200"
               }`}
           >
             <Filter size={16} />
@@ -417,10 +416,9 @@ const WarehouseList = () => {
           <button
             onClick={handleReset}
             className={`px-4 py-2 rounded-lg cursor-pointer transition
-              ${
-                isFilterActive
-                  ? "bg-blue-600 text-white hover:bg-blue-700"
-                  : "bg-gray-200 text-gray-600"
+              ${isFilterActive
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "bg-gray-200 text-gray-600"
               }`}
           >
             Reset
@@ -429,9 +427,8 @@ const WarehouseList = () => {
 
         {/* Animated Filter Panel */}
         <div
-          className={`transition-all duration-500 overflow-hidden ${
-            showFilters ? "max-h-[500px] opacity-100 mt-4" : "max-h-0 opacity-0"
-          }`}
+          className={`transition-all duration-500 overflow-hidden ${showFilters ? "max-h-[500px] opacity-100 mt-4" : "max-h-0 opacity-0"
+            }`}
         >
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4">
             {/* 1️⃣ District (Always Enabled) */}
@@ -464,9 +461,8 @@ const WarehouseList = () => {
                 setWarehouseName("");
                 dispatch(setPage(1));
               }}
-              className={`px-4 py-2 border rounded-lg ${
-                !district ? "bg-gray-100 cursor-not-allowed" : ""
-              }`}
+              className={`px-4 py-2 border rounded-lg ${!district ? "bg-gray-100 cursor-not-allowed" : ""
+                }`}
             >
               <option value="">Select Branch</option>
               {filterOptions.branches
@@ -487,9 +483,8 @@ const WarehouseList = () => {
                 setWarehouseName("");
                 dispatch(setPage(1));
               }}
-              className={`px-4 py-2 border rounded-lg ${
-                !branch ? "bg-gray-100 cursor-not-allowed" : ""
-              }`}
+              className={`px-4 py-2 border rounded-lg ${!branch ? "bg-gray-100 cursor-not-allowed" : ""
+                }`}
             >
               <option value="">Select Type</option>
 
@@ -508,9 +503,8 @@ const WarehouseList = () => {
                 setWarehouseName(e.target.value);
                 dispatch(setPage(1));
               }}
-              className={`px-4 py-2 border rounded-lg ${
-                !warehouseType ? "bg-gray-100 cursor-not-allowed" : ""
-              }`}
+              className={`px-4 py-2 border rounded-lg ${!warehouseType ? "bg-gray-100 cursor-not-allowed" : ""
+                }`}
             >
               <option value="">Select Warehouse</option>
 

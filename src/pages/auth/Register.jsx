@@ -18,8 +18,37 @@ const Register = () => {
   const navigate = useNavigate();
   const { loading, error } = useSelector((state) => state.auth);
 
+  const getPasswordErrors = (password) => {
+    const errors = [];
+
+    if (password.length < 8) {
+      errors.push("at least 8 characters");
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      errors.push("one uppercase letter");
+    }
+
+    if (!/[a-z]/.test(password)) {
+      errors.push("one lowercase letter");
+    }
+
+    if (!/[0-9]/.test(password)) {
+      errors.push("one number");
+    }
+
+    return errors;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const passwordErrors = getPasswordErrors(form.password);
+
+    if (passwordErrors.length > 0) {
+      toast.error(`Password must contain ${passwordErrors.join(", ")}`);
+      return;
+    }
 
     if (form.password !== form.confirmPassword) {
       toast.error("Passwords do not match");
@@ -31,7 +60,7 @@ const Register = () => {
         name: form.name,
         email: form.email,
         password: form.password,
-      })
+      }),
     );
 
     if (result.payload) {
@@ -46,7 +75,11 @@ const Register = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center flex-col gap-10 bg-gray-100 px-4">
-      <h1 className="font-semibold text-3xl text-center leading-10">Madhya Pradesh Warehousing<br/>And Logistics Corporation</h1>
+      <h1 className="font-semibold text-3xl text-center leading-10">
+        Madhya Pradesh Warehousing
+        <br />
+        And Logistics Corporation
+      </h1>
       <Card className="w-full max-w-md">
         <h2 className="text-2xl font-bold text-center mb-6">Register</h2>
 
@@ -91,7 +124,9 @@ const Register = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Confirm Password</label>
+            <label className="block text-sm font-medium mb-1">
+              Confirm Password
+            </label>
             <Input
               type="password"
               placeholder="Confirm your password"
@@ -103,19 +138,17 @@ const Register = () => {
             />
           </div>
 
-          <Button
-            type="submit"
-            fullWidth
-            disabled={loading}
-            className="mt-6"
-          >
+          <Button type="submit" fullWidth disabled={loading} className="mt-6">
             {loading ? "Registering..." : "Register"}
           </Button>
         </form>
 
         <p className="mt-6 text-center text-sm">
           Already have an account?{" "}
-          <Link to="/login" className="text-blue-600 font-semibold hover:underline">
+          <Link
+            to="/login"
+            className="text-blue-600 font-semibold hover:underline"
+          >
             Login
           </Link>
         </p>

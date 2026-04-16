@@ -55,6 +55,7 @@ const EditPayment = () => {
     to_date: "",
 
     commodity: "",
+    crop_year: "",
     rate: "",
     total_jv_amount: "",
     actual_passed_amount: "",
@@ -128,6 +129,27 @@ const EditPayment = () => {
     };
     return map[month] || 0;
   };
+
+  useEffect(() => {
+    if (currentPayment && warehouses.length) {
+      const selected = warehouses.find(
+        (w) => w.warehouse_name === currentPayment.warehouse_name,
+      );
+
+      if (selected) {
+        setSelectedWarehouse(selected);
+      }
+    }
+  }, [currentPayment, warehouses]);
+
+  useEffect(() => {
+    if (!formData.crop_year && selectedWarehouse?.cropData?.length) {
+      setFormData((prev) => ({
+        ...prev,
+        crop_year: selectedWarehouse.cropData[0]?.crop_year || "",
+      }));
+    }
+  }, [selectedWarehouse]);
 
   useEffect(() => {
     const loadWarehouses = async () => {
@@ -397,20 +419,23 @@ const EditPayment = () => {
             </FormField>
 
             <FormField label="Bill Type">
-              <select
-                name="bill_type"
-                value={formData.bill_type}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-                disabled={isLocked}
-              >
-                <option value="">Select Bill Type</option>
-                {filteredTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+            <select
+              name="bill_type"
+              value={formData.bill_type}
+              onChange={handleChange}
+              className="w-full border rounded-lg p-2"
+              disabled={isLocked}
+            >
+              <option value="">Select Bill Type</option>
+              {formData.bill_type && !filteredTypes.includes(formData.bill_type) && (
+                <option value={formData.bill_type}>{formData.bill_type}</option>
+              )}
+              {filteredTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
             </FormField>
 
             <FormField label="Month">
@@ -522,31 +547,34 @@ const EditPayment = () => {
             </FormField>
 
             <FormField label="Crop Year">
-              <select
-                name="crop_year"
-                value={formData.crop_year}
-                onChange={(e) => {
-                  const cropYear = e.target.value;
+            <select
+              name="crop_year"
+              value={formData.crop_year}
+              onChange={(e) => {
+                const cropYear = e.target.value;
 
-                  const cropData = selectedWarehouse?.cropData?.find(
-                    (c) => c.crop_year === cropYear,
-                  );
+                const cropData = selectedWarehouse?.cropData?.find(
+                  (c) => c.crop_year === cropYear,
+                );
 
-                  setFormData({
-                    ...formData,
-                    crop_year: cropYear,
-                    rate: cropData?.scheme_rate_amount || 0,
-                  });
-                }}
-                className="w-full border rounded-lg p-2"
-              >
-                <option value="">Select Crop Year</option>
-                {selectedWarehouse?.cropData?.map((c) => (
-                  <option key={c.crop_year} value={c.crop_year}>
-                    {c.crop_year}
-                  </option>
-                ))}
-              </select>
+                setFormData({
+                  ...formData,
+                  crop_year: cropYear,
+                  rate: cropData?.scheme_rate_amount || 0,
+                });
+              }}
+              className="w-full border rounded-lg p-2"
+            >
+              <option value="">Select Crop Year</option>
+              {formData.crop_year && !selectedWarehouse?.cropData?.some(c => c.crop_year === formData.crop_year) && (
+                <option value={formData.crop_year}>{formData.crop_year}</option>
+              )}
+              {selectedWarehouse?.cropData?.map((c) => (
+                <option key={c.crop_year} value={c.crop_year}>
+                  {c.crop_year}
+                </option>
+              ))}
+            </select>
             </FormField>
 
             <FormField label="Rate">
