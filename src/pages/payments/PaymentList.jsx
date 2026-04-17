@@ -619,6 +619,12 @@ const [previewData, setPreviewData] = useState([]);
 const [showPreview, setShowPreview] = useState(false);
 const [loadingImport, setLoadingImport] = useState(false);
 const [fullData, setFullData] = useState([]);
+const [workbook, setWorkbook] = useState(null);
+const [availableSheets, setAvailableSheets] = useState([]);
+const [selectedSheet, setSelectedSheet] = useState("");
+const [previewPage, setPreviewPage] = useState(1);
+const previewLimit = 50;
+const previewTotalPages = Math.ceil(fullData.length / previewLimit);
 
 const fileInputRef = useRef(null);
 
@@ -688,13 +694,66 @@ const fieldLabels = {
   remarks: "Remarks",
 };
 
-const convertHindi = (val) => {
-  if (!val) return val;
+const ENGLISH_WHITELIST = [
+  "INDORE", "DHAR", "KHANDWA", "KHARGONE", "JHABUA", "BURHANPUR", "BADWANI", "BARWANI", "DEWAS", "RATLAM", "UJJAIN", "BHOPAL", "GWALIOR", "JABALPUR",
+  "WAREHOUSE", "LOGISTICS", "PARK", "AGRO", "PVT", "LTD", "PART", "GODOWN", "DISTRICT", "BRANCH", "EMI", "PAN", "HOLDER", "BILL", "NO"
+];
 
+const convertHindi = (text, fieldName = "") => {
+  if (text === null || text === undefined || text === "") return text;
+  if (typeof text === "number") return text;
+  
+  const str = text.toString().trim();
+  
+  // 1. STRICT COLUMN PROTECTION
+  // These fields are always English in your sheets.
+  const PROTECTED_FIELDS = [
+    "district_name", "scheme", "pan_no", "pan_holder", 
+    "total_amount", "amount_paid", "balance_amount", 
+    "crop_year", "processed_period", "warehouse_no"
+  ];
+  if (PROTECTED_FIELDS.includes(fieldName)) return str;
+
+  // 2. Length-1 Protection (Protects A, B schemes and single digits)
+  if (str.length === 1) return str;
+
+  // 3. Numeric/Serial Date/ID check
+  if (!isNaN(str) && !isNaN(parseFloat(str))) return str;
+
+  // 4. Forced KrutiDev Symbols (High Confidence)
+  if (str.startsWith("'") || /[\[\]\\;{}=?+]/.test(str)) {
+    try { return kru2uni(str).trim(); } catch (e) { return str; }
+  }
+
+  const upperStr = str.toUpperCase();
+
+  // 5. Whitelist Check (District names and common WMS words)
+  const isWhitelisted = ENGLISH_WHITELIST.some(word => upperStr.includes(word));
+  if (isWhitelisted) return str;
+
+  // 6. Consonant Cluster Check (KrutiDev often has 3+ consonants without vowels)
+  const hasWeirdCluster = /[^aeiou]{3,}/i.test(str);
+  if (hasWeirdCluster && !isWhitelisted) {
+    try { return kru2uni(str).trim(); } catch (e) { return str; }
+  }
+
+  // 7. Case & Vowel Analysis
+  const isProperCase = /^[A-Z][a-z0-9]+(\s+[A-Z][a-z0-9]+)*$/.test(str);
+  const isAllCaps = /^[A-Z0-9\s,./&()*'#_-]+$/.test(str) && str.length > 2;
+
+  // Higher threshold (38%) for English names
+  const vowels = (str.match(/[aeiou]/gi) || []).length;
+  const ratio = vowels / str.length;
+  const hasHealthyVowels = ratio > 0.38 && str.length > 3;
+
+  if (isAllCaps) return str;
+  if (isProperCase && hasHealthyVowels) return str;
+
+  // 8. Default to Conversion
   try {
-    return kru2uni(val);
+    return kru2uni(str).trim();
   } catch (err) {
-    return val; // fallback
+    return str;
   }
 };
 
@@ -769,20 +828,10 @@ const getCropYearFromCommodity = (commodity) => {
   return `${fullYear - 1}-${String(fullYear).slice(-2)}`;
 };
 
-const handleImport = (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  setLoadingImport(true); // ✅ START LOADER EARLY
-
-  const reader = new FileReader();
-
-  reader.onload = async (evt) => {
+  const processSheetData = async (sheetName, wb) => {
     try {
-      const data = new Uint8Array(evt.target.result);
-      const workbook = XLSX.read(data, { type: "array" });
-
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      setLoadingImport(true);
+      const sheet = wb.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(sheet, {
         range: 3, // 🔥 skip first 3 rows (0-based index)
         raw: false,
@@ -798,117 +847,72 @@ const handleImport = (e) => {
         godown_type: "warehouse_type",
         pan_card_holder: "pan_card_holder",
         pan_card_number: "pan_card_number",
-
         gdn_no: "warehouse_no",
         "gdn_no.": "warehouse_no",
-
         depositers_name: "depositers_name",
         commodity: "commodity",
-        // period: "from_date",
         period: "period",
-
         financial_year: "financial_year",
         crop_year: "crop_year",
         rate: "rate",
-
         bill_amount: "bill_amount",
         total_jv_amount: "total_jv_amount",
         actual_passed_amount: "actual_passed_amount",
-
         tds: "tds",
         emi_amount: "emi_amount",
-
-        // ✅ FIXED
         "20_deduction_amount_against_1_gain": "deduction_20_percent",
-
         penalty: "penalty",
         medicine: "medicine",
         emi_fdr_interest: "emi_fdr_interest",
-
         gain_shortage_deduction: "gain_shortage_deduction",
         stock_shortage_deduction: "stock_shortage_deduction",
-
         bank_solvancy: "bank_solvancy",
         insurance: "insurance",
-
         other_deduction: "other_deduction_amount",
-
         pay_to_jvs_amount: "pay_to_jvs_amount",
         payment_by: "payment_by",
         payment_date: "payment_date",
         qtr: "qtr",
         remarks: "remarks",
-
-        // ✅ NEW FIX
         amount_deducted_against_gain: "amount_deducted_against_gain_loss",
       };
 
       const normalizeKeys = (row) => {
         const newRow = {};
-
         Object.keys(row).forEach((key) => {
-          const cleanKey = key
-            .toString()
-            .trim()
-            .toLowerCase()
-            .replace(/\s+/g, "_")
-            .replace(/[.%()]/g, "")
-            .replace(/__+/g, "_");
-
+          const cleanKey = key.toString().trim().toLowerCase()
+            .replace(/\s+/g, "_").replace(/[.%()]/g, "").replace(/__+/g, "_");
           let mappedKey = keyMapping[cleanKey] || cleanKey;
-
-          // 🔥 FORCE FIX
-          if (mappedKey === "gdn_no") {
-            mappedKey = "warehouse_no";
-          }
-
+          if (mappedKey === "gdn_no") mappedKey = "warehouse_no";
           newRow[mappedKey] = row[key];
         });
-
         return newRow;
       };
 
       const formattedData = jsonData.map((row) => {
         const normalizedRow = normalizeKeys(row);
-
         const periodData = processPeriod(normalizedRow.period);
-
         return {
           ...normalizedRow,
-
-          // ✅ Period logic
           from_date: periodData.from_date || null,
           to_date: periodData.to_date || null,
           month: periodData.month || "",
           financial_year: periodData.financial_year || "",
-
-          // ✅ Commodity → Crop Year
-          crop_year:
-            normalizedRow.crop_year ||
-            getCropYearFromCommodity(normalizedRow.commodity) ||
-            "",
-
+          crop_year: normalizedRow.crop_year || getCropYearFromCommodity(normalizedRow.commodity) || "",
           payment_date: formatExcelDate(normalizedRow.payment_date),
         };
       });
 
-      // ✅ REMOVE EMPTY COLUMNS
       const cleanedData = removeEmptyColumns(formattedData);
 
       const finalData = cleanedData.map((row) => ({
         ...row,
-
-        // ✅ ONLY THESE
         branch_name: convertHindi(row.branch_name),
         warehouse_name: convertHindi(row.warehouse_name),
-
-        // ❌ keep district as-is
         district_name: row.district_name,
       }));
 
-      // 🔥 ADD THIS BLOCK
       let warehouses = [];
-
       try {
         const warehousesRes = await axios.get("/warehouses");
         warehouses = warehousesRes.data.data;
@@ -916,59 +920,69 @@ const handleImport = (e) => {
         console.error("Failed to fetch warehouses", err);
       }
 
-      // attach cropData to each row
       const enrichedData = finalData.map((row) => {
         const match = warehouses.find(
-          (w) =>
-            w.warehouse_name === row.warehouse_name &&
-            w.branch_name === row.branch_name,
+          (w) => w.warehouse_name === row.warehouse_name && w.branch_name === row.branch_name
         );
-
-        return {
-          ...row,
-          cropData: match?.cropData || [],
-        };
+        return { ...row, cropData: match?.cropData || [] };
       });
 
-      setFullData(enrichedData);
-      setPreviewData(enrichedData.slice(0, 50));
-
-      // ✅ STORE FULL DATA
-      // 🔥 Ensure crop year exists in dropdown
       const newCropYears = new Set(cropYears);
-
       finalData.forEach((row) => {
-        if (row.crop_year) {
-          newCropYears.add(row.crop_year);
-        }
+        if (row.crop_year) newCropYears.add(row.crop_year);
       });
 
       setCropYears([...newCropYears]);
       setFullData(enrichedData);
-
-      // ✅ SHOW ONLY FIRST 50 ROWS (PERFORMANCE FIX)
+      setPreviewPage(1); // Reset to first page
       setPreviewData(enrichedData.slice(0, 50));
-
       setShowPreview(true);
-
-      // ✅ RESET INPUT (IMPORTANT)
-      // e.target.value = null;
-      fileInputRef.current.value = "";
-      setLoadingImport(false); // ✅ STOP LOADER
+      setLoadingImport(false);
     } catch (err) {
-      console.error("Import processing failed", err);
-      toast.error("Import processing failed");
+      console.error("Sheet processing failed", err);
+      toast.error("Sheet processing failed");
       setLoadingImport(false);
     }
   };
 
-  reader.onerror = () => {
-    toast.error("File reading failed");
-    setLoadingImport(false);
+  const handleSheetChange = (sheetName) => {
+    setSelectedSheet(sheetName);
+    processSheetData(sheetName, workbook);
   };
 
-  reader.readAsArrayBuffer(file);
-};
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setLoadingImport(true);
+    const reader = new FileReader();
+
+    reader.onload = async (evt) => {
+      try {
+        const data = new Uint8Array(evt.target.result);
+        const wb = XLSX.read(data, { type: "array" });
+        setWorkbook(wb);
+        setAvailableSheets(wb.SheetNames);
+        
+        const firstSheet = wb.SheetNames[0];
+        setSelectedSheet(firstSheet);
+        await processSheetData(firstSheet, wb);
+
+        fileInputRef.current.value = "";
+      } catch (err) {
+        console.error("File reading failed", err);
+        toast.error("File reading failed");
+        setLoadingImport(false);
+      }
+    };
+
+    reader.onerror = () => {
+      toast.error("File reading failed");
+      setLoadingImport(false);
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
 
 const handleBulkInsert = async () => {
   try {
@@ -1242,13 +1256,89 @@ return (
 
     {showPreview && (
       <Card className="p-6 max-w-[1217px] overflow-x-auto overflow-y-hidden whitespace-nowrap w-full">
-        <h2 className="text-xl font-semibold mb-4">Preview Imported Data</h2>
-        {fullData.length > 50 && (
-          <p className="text-sm text-gray-500 mb-2">
-            Showing first 50 rows out of {fullData.length}
-          </p>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Preview Imported Data</h2>
+          
+          {availableSheets.length > 1 && (
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+              <span className="text-sm font-medium text-slate-600">Select Sheet:</span>
+              <select 
+                value={selectedSheet}
+                onChange={(e) => handleSheetChange(e.target.value)}
+                className="bg-white border border-slate-300 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                {availableSheets.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+        <Table columns={previewColumns} data={fullData.slice((previewPage - 1) * previewLimit, previewPage * previewLimit)} />
+
+        {previewTotalPages > 1 && (
+          <div className="mt-4 flex flex-col md:flex-row items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200 gap-4">
+            <span className="text-sm font-semibold text-slate-700">
+              Showing {(previewPage - 1) * previewLimit + 1} to {Math.min(previewPage * previewLimit, fullData.length)} of <span className="text-blue-600">{fullData.length}</span> records
+            </span>
+            
+            <div className="flex items-center gap-1 overflow-x-auto max-w-full pb-1">
+              <button
+                disabled={previewPage === 1}
+                onClick={() => setPreviewPage(1)}
+                className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
+              >
+                First
+              </button>
+              
+              <button
+                disabled={previewPage === 1}
+                onClick={() => setPreviewPage(prev => prev - 1)}
+                className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30 mr-2"
+              >
+                Prev
+              </button>
+
+              {/* Numbered pagination with dots */}
+              {[...Array(previewTotalPages)].map((_, i) => {
+                const p = i + 1;
+                // Show first, last, current, and pages around current
+                if (p === 1 || p === previewTotalPages || (p >= previewPage - 2 && p <= previewPage + 2)) {
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setPreviewPage(p)}
+                      className={`min-w-[32px] px-2 py-1 text-xs border rounded transition ${
+                        previewPage === p ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 hover:bg-slate-100 border-slate-300"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                }
+                if (p === 2 && previewPage > 4) return <span key="dots1" className="px-1 text-slate-400">...</span>;
+                if (p === previewTotalPages - 1 && previewPage < previewTotalPages - 3) return <span key="dots2" className="px-1 text-slate-400">...</span>;
+                return null;
+              })}
+
+              <button
+                disabled={previewPage === previewTotalPages}
+                onClick={() => setPreviewPage(prev => prev + 1)}
+                className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30 ml-2"
+              >
+                Next
+              </button>
+              
+              <button
+                disabled={previewPage === previewTotalPages}
+                onClick={() => setPreviewPage(previewTotalPages)}
+                className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
+              >
+                Last
+              </button>
+            </div>
+          </div>
         )}
-        <Table columns={previewColumns} data={previewData} />
 
         <div className="mt-4 flex gap-2">
           <div className="flex gap-4 items-center">

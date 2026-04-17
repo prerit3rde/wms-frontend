@@ -15,6 +15,7 @@ import Input from "../../components/global/Input";
 import Pagination from "../../components/global/Pagination";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
+import kru2uni from "@anthro-ai/krutidev-unicode";
 
 const WarehouseList = () => {
   const dispatch = useDispatch();
@@ -42,6 +43,15 @@ const WarehouseList = () => {
 
   const [cropYear, setCropYear] = useState("");
 
+  /* ===============================
+     IMPORT / EXPORT STATE
+  =============================== */
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewData, setPreviewData] = useState([]);
+  const [availableSheets, setAvailableSheets] = useState([]);
+  const [selectedSheet, setSelectedSheet] = useState("");
+  const [workbook, setWorkbook] = useState(null);
+
   const [filterOptions, setFilterOptions] = useState({
     districts: [],
     branches: [],
@@ -49,6 +59,121 @@ const WarehouseList = () => {
     warehouseTypes: [],
     cropYears: [],
   });
+
+  const [previewPage, setPreviewPage] = useState(1);
+  const previewLimit = 50;
+  const previewTotalPages = Math.ceil(previewData.length / previewLimit);
+
+  const krutiDevMapping = {
+    "ftyk": "जिला",
+    "'kk[kk": "शाखा",
+    "osvjgkml": "वेअरहाउस",
+    ";kstuk": "योजना",
+    ";kstuk nj jkf'k": "योजना दर राशि",
+    "vuqcaf/kr HkaMkj.k {kerk": "अनुबंधित भंडारण क्षमता",
+    "okLrfod HkaMkj.k {kerk": "वास्तविक भंडारण क्षमता",
+    "okLrfod HkaMkj.k": "वास्तविक भंडारण",
+    "vuqca/k fnukad": "अनुबंध दिनांक",
+    "xksnke dzekad": "गोदाम क्रमांक",
+    "Bank Solvancy dk izek.k i= dh jkf'k": "Bank Solvancy का प्रमाण पत्र की राशि",
+    "Bank Solvancy ds 'kiFk i= dh jkf'k": "Bank Solvancy के शपथ पत्र की राशि",
+    "Bank Solvancy Diduction By Bill": "Bank Solvancy Diduction By Bill",
+    "Balance Amount Bank Solvancy": "Balance Amount Bank Solvancy",
+    "TOTAL EMI": "TOTAL EMI",
+    "EMI Diduction By Bill": "EMI Diduction By Bill",
+    "Balance Amount EMI": "Balance Amount EMI",
+    "Pan Card Holder": "Pan Card Holder",
+    "Pan Card No": "Pan Card No",
+    "'kiFk i=": "शपथ पत्र",
+    "izek.k i=": "प्रमाण पत्र",
+    "'kifk i=": "शपथ पत्र",
+    "izek.k i= ": "प्रमाण पत्र",
+    "izek.k i= 450000": "प्रमाण पत्र 450000"
+  };
+
+  // Define exactly what we want to show in the preview (and store in DB)
+  const REQUIRED_MAPPING = [
+    { key: "जिला", label: "जिला", field: "district_name" },
+    { key: "शाखा", label: "शाखा", field: "branch_name" },
+    { key: "वेअरहाउस", label: "वेअरहाउस", field: "warehouse_name" },
+    { key: "योजना", label: "Scheme", field: "scheme" },
+    { key: "योजना दर राशि", label: "Scheme Rate Amount", field: "scheme_rate_amount" },
+    { key: "अनुबंधित भंडारण क्षमता", label: "भंडारण क्षमता", field: "storage_capacity" },
+    { key: "अनुबंध दिनांक", label: "अनुबंध दिनांक", field: "contract_date" },
+    { key: "गोदाम क्रमांक", label: "गोदाम क्र.", field: "warehouse_no" },
+    { key: "Bank Solvancy का प्रमाण पत्र की राशि", label: "BS प्रमाण पत्र", field: "bs_cert" },
+    { key: "Bank Solvancy के शपथ पत्र की राशि", label: "BS शपथ पत्र", field: "bs_aff" },
+    { key: "Bank Solvancy Diduction By Bill", label: "BS Deduction", field: "bank_solvency_deduction_by_bill" },
+    { key: "Balance Amount Bank Solvancy", label: "BS Balance", field: "bank_solvency_balance_amount" },
+    { key: "TOTAL EMI", label: "TOTAL EMI", field: "total_emi" },
+    { key: "EMI Diduction By Bill", label: "EMI Deduction", field: "emi_deduction_by_bill" },
+    { key: "Balance Amount EMI", label: "EMI Balance", field: "balance_amount_emi" },
+    { key: "Pan Card Holder", label: "PAN Holder", field: "pan_card_holder" },
+    { key: "Pan Card No", label: "PAN No", field: "pan_card_number" },
+  ];
+
+  const ENGLISH_WHITELIST = [
+    "INDORE", "DHAR", "KHANDWA", "KHARGONE", "JHABUA", "BURHANPUR", "BADWANI", "BARWANI", "DEWAS", "RATLAM", "UJJAIN", "BHOPAL", "GWALIOR", "JABALPUR",
+    "WAREHOUSE", "LOGISTICS", "PARK", "AGRO", "PVT", "LTD", "PART", "GODOWN", "DISTRICT", "BRANCH", "EMI", "PAN", "HOLDER", "BILL", "NO", "NAME", "PMS", "WMS", "JVS", "SCHEME"
+  ];
+
+  const handleKruToUni = (text, fieldName = "") => {
+    if (text === null || text === undefined || text === "") return text;
+    if (typeof text === "number") return text;
+
+    const str = text.toString().trim();
+
+    // 1. STRICT PROTECTED FIELDS (Numbers/Codes that must be English)
+    const PROTECTED_FIELDS = [
+      "pan_card_number", "gst_no", "emi_deduction_by_bill", "storage_capacity",
+      "total_emi", "scheme_rate_amount", "warehouse_no",
+      "bank_solvency_deduction_by_bill", "bank_solvency_balance_amount", "balance_amount_emi"
+    ];
+    if (PROTECTED_FIELDS.includes(fieldName)) return str;
+
+    // 2. BASIC FORMAT PROTECTION
+    if (str.length === 1) return str;
+    if (!isNaN(str) && !isNaN(parseFloat(str))) return str;
+
+    // 3. PRIORITY DIRECT LOOKUP
+    if (krutiDevMapping[str]) return krutiDevMapping[str];
+
+    const upperStr = str.toUpperCase();
+
+    // 4. PAN NUMBER DETECTION (5 letters, 4 numbers, 1 letter)
+    if (/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(upperStr)) return str;
+
+    // 5. ALL CAPS PROTECTION (Acronyms, English Names)
+    const isAllCaps = /^[A-Z0-9\s,./&()*'#_-]+$/.test(str) && str.length > 2;
+    if (isAllCaps) return str;
+
+    // 6. WHITELIST CHECK
+    const isWhitelisted = ENGLISH_WHITELIST.some(word => upperStr.includes(word));
+    if (isWhitelisted) return str;
+
+    // 7. ENGLISH CASE ANALYSIS (e.g. "Burhanpur", "Amjhera")
+    const isProperCase = /^[A-Z][a-z0-9.]+ (\s+[A-Z][a-z0-9.]+)*$/.test(str) || /^[A-Z][a-z0-9.]+$/.test(str);
+    const vowels = (str.match(/[aeiou]/gi) || []).length;
+    const ratio = vowels / str.length;
+    // English names have healthy vowel density (>20%)
+    if (isProperCase && ratio > 0.20) return str;
+
+    // 8. FORCED KRUTIDEV SIGNATURES
+    if (str.startsWith("'") || /[\[\]\\;{}=?+]/.test(str)) {
+      try { return kru2uni(str).trim(); } catch (e) { return str; }
+    }
+
+    // 9. AUTOMATIC CONVERSION FALLBACK (For everything else that lacks healthy vowels)
+    if (ratio < 0.20 || /[^aeiou]{4,}/i.test(str)) {
+      try {
+        return kru2uni(str).trim();
+      } catch (e) {
+        return str;
+      }
+    }
+
+    return str;
+  };
 
   /* ===============================
      ACTIVE FILTER DETECTION
@@ -204,8 +329,6 @@ const WarehouseList = () => {
     },
   ];
 
-  const [previewData, setPreviewData] = useState([]);
-  const [showPreview, setShowPreview] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -240,20 +363,32 @@ const WarehouseList = () => {
 
     reader.onload = (evt) => {
       const data = new Uint8Array(evt.target.result);
-      const workbook = XLSX.read(data, { type: "array" });
+      const wb = XLSX.read(data, { type: "array" });
+      setWorkbook(wb);
+      setAvailableSheets(wb.SheetNames);
 
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(sheet);
+      const firstSheetName = wb.SheetNames[0];
+      setSelectedSheet(firstSheetName);
+
+      const sheet = wb.Sheets[firstSheetName];
+      const jsonData = XLSX.utils.sheet_to_json(sheet, { range: 1 });
 
       setPreviewData(jsonData);
       setShowPreview(true);
 
-      // ✅ RESET INPUT (IMPORTANT)
-      // e.target.value = null;
       fileInputRef.current.value = "";
     };
 
     reader.readAsArrayBuffer(file);
+  };
+
+  const handleSheetChange = (sheetName) => {
+    if (!workbook) return;
+    setSelectedSheet(sheetName);
+    const sheet = workbook.Sheets[sheetName];
+    const jsonData = XLSX.utils.sheet_to_json(sheet, { range: 1 });
+    setPreviewData(jsonData);
+    setPreviewPage(1); // Reset to first page
   };
 
   const handleBulkInsert = async () => {
@@ -278,10 +413,13 @@ const WarehouseList = () => {
     }
   };
 
-  const previewColumns = Object.keys(previewData[0] || {}).map((key) => ({
-    key,
-    label: fieldLabels[key] || key,
-  }));
+  // Filter out columns that we don't want to show in the preview table (like contract_date)
+  const previewColumns = REQUIRED_MAPPING
+    .filter(m => m.field !== "contract_date")
+    .map(m => ({
+      key: m.field,
+      label: m.label
+    }));
 
   return (
     <div className="space-y-6">
@@ -318,13 +456,143 @@ const WarehouseList = () => {
         </div>
       </div>
 
-      {showPreview && (
-        <Card className="p-6 max-w-[1217px] overflow-x-auto overflow-y-hidden whitespace-nowrap w-full">
-          <h2 className="text-xl font-semibold mb-4">Preview Imported Data</h2>
+      {showPreview && previewData.length > 0 && (
+        <Card className="p-6 max-w-[1217px] overflow-x-auto overflow-y-hidden whitespace-nowrap w-full border-blue-100 shadow-md">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <span className="w-1.5 h-6 bg-blue-600 rounded-full"></span>
+              Preview Imported Data
+            </h2>
 
-          <Table columns={previewColumns} data={previewData} />
+            {availableSheets.length > 1 && (
+              <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                <span className="text-sm font-medium text-slate-600">Select Sheet:</span>
+                <select
+                  value={selectedSheet}
+                  onChange={(e) => handleSheetChange(e.target.value)}
+                  className="bg-white border border-slate-300 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  {availableSheets.map(name => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
 
-          <div className="mt-4 flex gap-2">
+          <Table
+            columns={previewColumns}
+            data={previewData.slice((previewPage - 1) * previewLimit, previewPage * previewLimit).map(row => {
+              const cleanRow = {};
+              Object.keys(row).forEach(excelKey => {
+                // 1. Convert Excel key to Unicode (Hindi) if it's KrutiDev
+                // We pass an empty string as fieldName so it doesn't apply protection to the header itself
+                const unicodeKey = handleKruToUni(excelKey);
+
+                // 2. STRIP ALL SPACES for exact key matching across different Excel versions
+                const strippedUnicodeKey = unicodeKey.replace(/\s+/g, '').toLowerCase();
+                const strippedExcelKey = excelKey.replace(/\s+/g, '').toLowerCase();
+
+                // 3. PRIORITIZED MATCHING LOGIC
+                // First try exact matches, then try partial matches
+                let match = REQUIRED_MAPPING.find(m => {
+                  const strippedMappingKey = m.key.replace(/\s+/g, '').toLowerCase();
+                  return strippedMappingKey === strippedUnicodeKey || strippedMappingKey === strippedExcelKey;
+                });
+
+                // If no exact match, try inclusion check (partial match)
+                if (!match) {
+                  match = REQUIRED_MAPPING.find(m => {
+                    const strippedMappingKey = m.key.replace(/\s+/g, '').toLowerCase();
+                    return strippedMappingKey.includes(strippedUnicodeKey) ||
+                      strippedUnicodeKey.includes(strippedMappingKey);
+                  });
+                }
+
+                if (match) {
+                  // Pass the field name to correctly apply column-based protection logic
+                  let val = handleKruToUni(row[excelKey], match.field);
+
+                  // Fix floating point errors for numeric fields in the preview
+                  const numericFields = [
+                    "scheme_rate_amount", "storage_capacity", "bs_cert", "bs_aff",
+                    "bank_solvency_deduction_by_bill", "bank_solvency_balance_amount",
+                    "total_emi", "emi_deduction_by_bill", "balance_amount_emi"
+                  ];
+
+                  if (numericFields.includes(match.field) && !isNaN(val) && val !== "" && val !== null) {
+                    val = Math.round(parseFloat(val) * 100) / 100;
+                  }
+
+                  cleanRow[match.field] = val;
+                }
+              });
+              return cleanRow;
+            })}
+          />
+
+          {previewTotalPages > 1 && (
+            <div className="mt-4 flex flex-col md:flex-row items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200 gap-4">
+              <span className="text-sm font-semibold text-slate-700">
+                Showing {(previewPage - 1) * previewLimit + 1} to {Math.min(previewPage * previewLimit, previewData.length)} of <span className="text-blue-600">{previewData.length}</span> records
+              </span>
+
+              <div className="flex items-center gap-1 overflow-x-auto max-w-full pb-1">
+                <button
+                  disabled={previewPage === 1}
+                  onClick={() => setPreviewPage(1)}
+                  className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
+                >
+                  First
+                </button>
+
+                <button
+                  disabled={previewPage === 1}
+                  onClick={() => setPreviewPage(prev => prev - 1)}
+                  className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30 mr-2"
+                >
+                  Prev
+                </button>
+
+                {[...Array(previewTotalPages)].map((_, i) => {
+                  const p = i + 1;
+                  if (p === 1 || p === previewTotalPages || (p >= previewPage - 2 && p <= previewPage + 2)) {
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => setPreviewPage(p)}
+                        className={`min-w-[32px] px-2 py-1 text-xs border rounded transition ${previewPage === p ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 hover:bg-slate-100 border-slate-300"
+                          }`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  }
+                  if (p === 2 && previewPage > 4) return <span key="dots1" className="px-1 text-slate-400">...</span>;
+                  if (p === previewTotalPages - 1 && previewPage < previewTotalPages - 3) return <span key="dots2" className="px-1 text-slate-400">...</span>;
+                  return null;
+                })}
+
+                <button
+                  disabled={previewPage === previewTotalPages}
+                  onClick={() => setPreviewPage(prev => prev + 1)}
+                  className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30 ml-2"
+                >
+                  Next
+                </button>
+
+                <button
+                  disabled={previewPage === previewTotalPages}
+                  onClick={() => setPreviewPage(previewTotalPages)}
+                  className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
+                >
+                  Last
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-6 flex gap-3">
             <Button onClick={handleBulkInsert}>Insert All</Button>
 
             <Button

@@ -89,8 +89,11 @@ const ViewWarehouse = () => {
               label="Type"
               value={item.is_affidavit ? "Affidavit" : "Certificate"}
             />
-            <Field label="Affidavit Amount" value={item.bank_solvency_affidavit_amount} />
-            <Field label="Certificate Amount" value={item.bank_solvency_certificate_amount} />
+            {item.is_affidavit ? (
+              <Field label="Affidavit Amount" value={item.bank_solvency_affidavit_amount} />
+            ) : (
+              <Field label="Certificate Amount" value={item.bank_solvency_certificate_amount} />
+            )}
             <Field label="Deduction" value={item.bank_solvency_deduction_by_bill} />
             <Field label="Balance" value={item.bank_solvency_balance_amount} />
           </Section>
