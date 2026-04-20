@@ -603,6 +603,8 @@ const columns = [
 
               await dispatch(removePayment(row.id));
               dispatch(fetchPayments({ page, limit }));
+              await fetchFilters(); // ✅ SYNC FILTERS AFTER DELETE
+              await fetchCropYears(); // ✅ SYNC CROP YEARS AFTER DELETE
               toast.success("Payment deleted successfully");
             }}
             className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200"

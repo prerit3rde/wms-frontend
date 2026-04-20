@@ -51,6 +51,7 @@ const WarehouseList = () => {
   const [availableSheets, setAvailableSheets] = useState([]);
   const [selectedSheet, setSelectedSheet] = useState("");
   const [workbook, setWorkbook] = useState(null);
+  const [isImportLoading, setIsImportLoading] = useState(false);
 
   const [filterOptions, setFilterOptions] = useState({
     districts: [],
@@ -101,8 +102,8 @@ const WarehouseList = () => {
     { key: "अनुबंधित भंडारण क्षमता", label: "भंडारण क्षमता", field: "storage_capacity" },
     { key: "अनुबंध दिनांक", label: "अनुबंध दिनांक", field: "contract_date" },
     { key: "गोदाम क्रमांक", label: "गोदाम क्र.", field: "warehouse_no" },
-    { key: "Bank Solvancy का प्रमाण पत्र की राशि", label: "BS प्रमाण पत्र", field: "bs_cert" },
-    { key: "Bank Solvancy के शपथ पत्र की राशि", label: "BS शपथ पत्र", field: "bs_aff" },
+    { key: "Bank Solvancy का प्रमाण पत्र की राशि", label: "BS Type Cell", field: "bs_cert_raw" },
+    { key: "Bank Solvancy के शपथ पत्र की राशि", label: "BS Amount Cell", field: "bs_aff_raw" },
     { key: "Bank Solvancy Diduction By Bill", label: "BS Deduction", field: "bank_solvency_deduction_by_bill" },
     { key: "Balance Amount Bank Solvancy", label: "BS Balance", field: "bank_solvency_balance_amount" },
     { key: "TOTAL EMI", label: "TOTAL EMI", field: "total_emi" },
@@ -114,7 +115,8 @@ const WarehouseList = () => {
 
   const ENGLISH_WHITELIST = [
     "INDORE", "DHAR", "KHANDWA", "KHARGONE", "JHABUA", "BURHANPUR", "BADWANI", "BARWANI", "DEWAS", "RATLAM", "UJJAIN", "BHOPAL", "GWALIOR", "JABALPUR",
-    "WAREHOUSE", "LOGISTICS", "PARK", "AGRO", "PVT", "LTD", "PART", "GODOWN", "DISTRICT", "BRANCH", "EMI", "PAN", "HOLDER", "BILL", "NO", "NAME", "PMS", "WMS", "JVS", "SCHEME"
+    "WAREHOUSE", "LOGISTICS", "PARK", "AGRO", "PVT", "LTD", "PART", "GODOWN", "DISTRICT", "BRANCH", "EMI", "PAN", "HOLDER", "BILL", "NO", "NAME", "PMS", "WMS", "JVS", "SCHEME",
+    "SHREE", "SHRI", "SAMITI", "MARYADIT", "ADARSH", "SHAKARI", "VIPNAN", "DEPALPUR", "WARE", "HOUSE", "SUPPLY"
   ];
 
   const handleKruToUni = (text, fieldName = "") => {
@@ -123,56 +125,71 @@ const WarehouseList = () => {
 
     const str = text.toString().trim();
 
-    // 1. STRICT PROTECTED FIELDS (Numbers/Codes that must be English)
+    // 0. Dictionary Match (Highest Priority for Headers)
+    const directMatch = krutiDevMapping[str];
+    if (directMatch) return directMatch;
+
+    // 1. Unicode Detection (Skip if already Devnagri)
+    if (/[\u0900-\u097F]/.test(str)) return str;
+
+    // 2. STRICT PROTECTED FIELDS
     const PROTECTED_FIELDS = [
       "pan_card_number", "gst_no", "emi_deduction_by_bill", "storage_capacity",
       "total_emi", "scheme_rate_amount", "warehouse_no",
-      "bank_solvency_deduction_by_bill", "bank_solvency_balance_amount", "balance_amount_emi"
+      "bank_solvency_deduction_by_bill", "bank_solvency_balance_amount", "balance_amount_emi",
+      "bs_cert", "bs_aff", "scheme", "scheme_rate_amount",
+      "bank_solvency_certificate_amount", "bank_solvency_affidavit_amount",
+      "bs_cert_raw", "bs_aff_raw"
     ];
     if (PROTECTED_FIELDS.includes(fieldName)) return str;
 
-    // 2. BASIC FORMAT PROTECTION
-    if (str.length === 1) return str;
+    // 3. BASIC FORMAT PROTECTION (NUMBERS & SINGLE CHARS)
+    if (str.length <= 1) return str;
     if (!isNaN(str) && !isNaN(parseFloat(str))) return str;
 
-    // 3. PRIORITY DIRECT LOOKUP
-    if (krutiDevMapping[str]) return krutiDevMapping[str];
+    const hasKrutiMarkers = (s) => /[¼½¾[\]\\;{}/.]/.test(s);
 
+    const isTokenEnglish = (token) => {
+      const upper = token.toUpperCase();
+      // Whitelist check
+      if (ENGLISH_WHITELIST.some(word => upper.includes(word))) return true;
+      // PAN check
+      if (/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(upper)) return true;
+
+      // Pure numeric / codes protection
+      if (/^[0-9./_-]+$/.test(token)) return true;
+
+      const letters = token.replace(/[^a-zA-Z]/g, '');
+      if (letters.length <= 1) return true; // Keep single letters (A, B) as English
+
+      const vowels = (letters.match(/[aeiou]/gi) || []).length;
+      const ratio = vowels / letters.length;
+
+      // Increased thresholds for long KrutiDev words (even with many vowels)
+      if (ratio >= 0.35 && letters.length > 5 && !hasKrutiMarkers(token)) return true;
+      if (ratio >= 0.40 && !hasKrutiMarkers(token)) return true;
+
+      // Consecutive consonants check
+      if (/[b-df-hj-np-tv-z]{4,}/i.test(letters)) return false;
+
+      return ratio >= 0.25;
+    };
+
+    // Initial check for whitelisted whole strings
     const upperStr = str.toUpperCase();
+    if (ENGLISH_WHITELIST.some(word => upperStr.includes(word)) && !hasKrutiMarkers(str)) return str;
 
-    // 4. PAN NUMBER DETECTION (5 letters, 4 numbers, 1 letter)
-    if (/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(upperStr)) return str;
+    const parts = str.split(/(\s+)/);
+    return parts.map(part => {
+      if (!part.trim()) return part;
+      if (isTokenEnglish(part) && !hasKrutiMarkers(part)) return part;
 
-    // 5. ALL CAPS PROTECTION (Acronyms, English Names)
-    const isAllCaps = /^[A-Z0-9\s,./&()*'#_-]+$/.test(str) && str.length > 2;
-    if (isAllCaps) return str;
-
-    // 6. WHITELIST CHECK
-    const isWhitelisted = ENGLISH_WHITELIST.some(word => upperStr.includes(word));
-    if (isWhitelisted) return str;
-
-    // 7. ENGLISH CASE ANALYSIS (e.g. "Burhanpur", "Amjhera")
-    const isProperCase = /^[A-Z][a-z0-9.]+ (\s+[A-Z][a-z0-9.]+)*$/.test(str) || /^[A-Z][a-z0-9.]+$/.test(str);
-    const vowels = (str.match(/[aeiou]/gi) || []).length;
-    const ratio = vowels / str.length;
-    // English names have healthy vowel density (>20%)
-    if (isProperCase && ratio > 0.20) return str;
-
-    // 8. FORCED KRUTIDEV SIGNATURES
-    if (str.startsWith("'") || /[\[\]\\;{}=?+]/.test(str)) {
-      try { return kru2uni(str).trim(); } catch (e) { return str; }
-    }
-
-    // 9. AUTOMATIC CONVERSION FALLBACK (For everything else that lacks healthy vowels)
-    if (ratio < 0.20 || /[^aeiou]{4,}/i.test(str)) {
       try {
-        return kru2uni(str).trim();
+        return kru2uni(part);
       } catch (e) {
-        return str;
+        return part;
       }
-    }
-
-    return str;
+    }).join("");
   };
 
   /* ===============================
@@ -201,15 +218,16 @@ const WarehouseList = () => {
   /* ===============================
      FETCH FILTER OPTIONS
   =============================== */
+  const fetchFilters = async () => {
+    try {
+      const response = await axios.get("/warehouses/filters");
+      setFilterOptions(response.data.data);
+    } catch (error) {
+      console.error("Failed to load filter options");
+    }
+  };
+
   useEffect(() => {
-    const fetchFilters = async () => {
-      try {
-        const response = await axios.get("/warehouses/filters");
-        setFilterOptions(response.data.data);
-      } catch (error) {
-        console.error("Failed to load filter options");
-      }
-    };
     fetchFilters();
   }, []);
 
@@ -310,14 +328,15 @@ const WarehouseList = () => {
           </Link>
 
           <button
-            onClick={() => {
+            onClick={async () => {
               if (
                 window.confirm(
                   "Are you sure you want to delete this warehouse?",
                 )
               ) {
-                dispatch(deleteWarehouse(row.id));
+                await dispatch(deleteWarehouse(row.id));
                 toast.success("Warehouse deleted successfully");
+                await fetchFilters(); // ✅ SYNC FILTERS AFTER DELETE
               }
             }}
             className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition cursor-pointer"
@@ -359,24 +378,36 @@ const WarehouseList = () => {
     const file = e.target.files[0];
     if (!file) return;
 
+    setIsImportLoading(true);
     const reader = new FileReader();
 
     reader.onload = (evt) => {
-      const data = new Uint8Array(evt.target.result);
-      const wb = XLSX.read(data, { type: "array" });
-      setWorkbook(wb);
-      setAvailableSheets(wb.SheetNames);
+      try {
+        const data = new Uint8Array(evt.target.result);
+        const wb = XLSX.read(data, { type: "array" });
+        setWorkbook(wb);
+        setAvailableSheets(wb.SheetNames);
 
-      const firstSheetName = wb.SheetNames[0];
-      setSelectedSheet(firstSheetName);
+        const firstSheetName = wb.SheetNames[0];
+        setSelectedSheet(firstSheetName);
 
-      const sheet = wb.Sheets[firstSheetName];
-      const jsonData = XLSX.utils.sheet_to_json(sheet, { range: 1 });
+        const sheet = wb.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(sheet, { range: 1, raw: false });
 
-      setPreviewData(jsonData);
-      setShowPreview(true);
+        setPreviewData(jsonData);
+        setShowPreview(true);
+      } catch (error) {
+        console.error("Import Error:", error);
+        toast.error("Failed to parse Excel file");
+      } finally {
+        setIsImportLoading(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    };
 
-      fileInputRef.current.value = "";
+    reader.onerror = () => {
+      toast.error("Error reading file");
+      setIsImportLoading(false);
     };
 
     reader.readAsArrayBuffer(file);
@@ -386,15 +417,73 @@ const WarehouseList = () => {
     if (!workbook) return;
     setSelectedSheet(sheetName);
     const sheet = workbook.Sheets[sheetName];
-    const jsonData = XLSX.utils.sheet_to_json(sheet, { range: 1 });
+    const jsonData = XLSX.utils.sheet_to_json(sheet, { range: 1, raw: false });
     setPreviewData(jsonData);
     setPreviewPage(1); // Reset to first page
   };
 
+  const transformRow = (row) => {
+    const cleanRow = {};
+
+    // Normalize mapping search
+    Object.keys(row).forEach(excelKey => {
+      const unicodeKey = handleKruToUni(excelKey);
+      const normKey = unicodeKey.replace(/\s+/g, '').toLowerCase();
+      const normExcel = excelKey.replace(/\s+/g, '').toLowerCase();
+
+      const match = REQUIRED_MAPPING.find(m => {
+        const mNorm = m.key.replace(/\s+/g, '').toLowerCase();
+        return mNorm === normKey || mNorm === normExcel;
+      });
+
+      if (match) {
+        const rawVal = row[excelKey];
+        cleanRow[match.field] = handleKruToUni(rawVal, match.field);
+      }
+    });
+
+    // --- CONDITIONAL BS LOGIC ---
+    const bsTypeRaw = cleanRow.bs_cert_raw?.toString() || "";
+    const bsTypeUnicode = handleKruToUni(bsTypeRaw);
+    const bsAmountFromAffCol = parseFloat(cleanRow.bs_aff_raw?.toString().replace(/,/g, "")) || 0;
+
+    if (bsTypeUnicode.includes("शपथ पत्र")) {
+      cleanRow.is_affidavit = true;
+      cleanRow.bs_type = "Affidavit";
+      cleanRow.bank_solvency_affidavit_amount = bsAmountFromAffCol;
+      cleanRow.bank_solvency_certificate_amount = 0;
+    } else if (bsTypeUnicode.includes("प्रमाण पत्र")) {
+      cleanRow.is_affidavit = false;
+      cleanRow.bs_type = "Certificate";
+      cleanRow.bank_solvency_affidavit_amount = 0;
+
+      // Extract digits from the type cell (e.g. "प्रमाण पत्र 450000")
+      const numericMatch = bsTypeUnicode.match(/(\d+)/);
+      if (numericMatch) {
+        cleanRow.bank_solvency_certificate_amount = parseFloat(numericMatch[1]);
+      } else {
+        // Fallback to the other column if no number in this cell
+        cleanRow.bank_solvency_certificate_amount = bsAmountFromAffCol;
+      }
+    } else {
+      // Default fallback
+      const fallbackAmount = bsAmountFromAffCol || parseFloat(bsTypeUnicode.replace(/[^\d.]/g, "")) || 0;
+      cleanRow.is_affidavit = false;
+      cleanRow.bs_type = "Certificate";
+      cleanRow.bank_solvency_certificate_amount = fallbackAmount;
+      cleanRow.bank_solvency_affidavit_amount = 0;
+    }
+
+    return cleanRow;
+  };
+
   const handleBulkInsert = async () => {
     try {
+      const transformedData = previewData.map(transformRow);
+
       await axios.post("/warehouses/bulk-insert", {
-        data: previewData,
+        data: transformedData,
+        default_crop_year: selectedSheet,
       });
 
       toast.success("Warehouses imported successfully!");
@@ -408,21 +497,48 @@ const WarehouseList = () => {
       }
 
       dispatch(fetchWarehouses({ page, limit }));
+      await fetchFilters(); // ✅ SYNC FILTERS AFTER IMPORT
     } catch (error) {
       toast.error("Import failed!");
     }
   };
 
-  // Filter out columns that we don't want to show in the preview table (like contract_date)
-  const previewColumns = REQUIRED_MAPPING
-    .filter(m => m.field !== "contract_date")
-    .map(m => ({
-      key: m.field,
-      label: m.label
-    }));
+  // Reorder and transform columns for preview
+  const previewColumns = [];
+  REQUIRED_MAPPING.forEach(m => {
+    if (["contract_date", "bs_cert_raw", "bs_aff_raw"].includes(m.field)) return;
+    if (previewColumns.find(c => c.key === m.field)) return;
+
+    previewColumns.push({ key: m.field, label: m.label });
+
+    // Insert BS derived columns right after Warehouse No
+    if (m.field === "warehouse_no") {
+      previewColumns.push({ key: "bs_type", label: "BS Type" });
+      previewColumns.push({ key: "bank_solvency_certificate_amount", label: "BS Certificate Amount" });
+      previewColumns.push({ key: "bank_solvency_affidavit_amount", label: "Bank Solvency Affidavit Amount" });
+    }
+  });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Global Loader for Import */}
+      {isImportLoading && (
+        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm">
+          <div className="bg-white p-8 rounded-2xl shadow-2xl border border-slate-100 flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Import className="text-blue-600 animate-pulse" size={24} />
+              </div>
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-bold text-slate-800">Processing Excel Data</h3>
+              <p className="text-sm text-slate-500">Please wait while we extract and map your data...</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">
@@ -482,53 +598,7 @@ const WarehouseList = () => {
 
           <Table
             columns={previewColumns}
-            data={previewData.slice((previewPage - 1) * previewLimit, previewPage * previewLimit).map(row => {
-              const cleanRow = {};
-              Object.keys(row).forEach(excelKey => {
-                // 1. Convert Excel key to Unicode (Hindi) if it's KrutiDev
-                // We pass an empty string as fieldName so it doesn't apply protection to the header itself
-                const unicodeKey = handleKruToUni(excelKey);
-
-                // 2. STRIP ALL SPACES for exact key matching across different Excel versions
-                const strippedUnicodeKey = unicodeKey.replace(/\s+/g, '').toLowerCase();
-                const strippedExcelKey = excelKey.replace(/\s+/g, '').toLowerCase();
-
-                // 3. PRIORITIZED MATCHING LOGIC
-                // First try exact matches, then try partial matches
-                let match = REQUIRED_MAPPING.find(m => {
-                  const strippedMappingKey = m.key.replace(/\s+/g, '').toLowerCase();
-                  return strippedMappingKey === strippedUnicodeKey || strippedMappingKey === strippedExcelKey;
-                });
-
-                // If no exact match, try inclusion check (partial match)
-                if (!match) {
-                  match = REQUIRED_MAPPING.find(m => {
-                    const strippedMappingKey = m.key.replace(/\s+/g, '').toLowerCase();
-                    return strippedMappingKey.includes(strippedUnicodeKey) ||
-                      strippedUnicodeKey.includes(strippedMappingKey);
-                  });
-                }
-
-                if (match) {
-                  // Pass the field name to correctly apply column-based protection logic
-                  let val = handleKruToUni(row[excelKey], match.field);
-
-                  // Fix floating point errors for numeric fields in the preview
-                  const numericFields = [
-                    "scheme_rate_amount", "storage_capacity", "bs_cert", "bs_aff",
-                    "bank_solvency_deduction_by_bill", "bank_solvency_balance_amount",
-                    "total_emi", "emi_deduction_by_bill", "balance_amount_emi"
-                  ];
-
-                  if (numericFields.includes(match.field) && !isNaN(val) && val !== "" && val !== null) {
-                    val = Math.round(parseFloat(val) * 100) / 100;
-                  }
-
-                  cleanRow[match.field] = val;
-                }
-              });
-              return cleanRow;
-            })}
+            data={previewData.slice((previewPage - 1) * previewLimit, previewPage * previewLimit).map(transformRow)}
           />
 
           {previewTotalPages > 1 && (
