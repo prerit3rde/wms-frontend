@@ -59,11 +59,10 @@ const AddPayment = () => {
       if (!formData.district_name)
         newErrors.district_name = "District is required";
       if (!formData.branch_name) newErrors.branch_name = "Branch is required";
+      if (!formData.warehouse_type)
+        newErrors.warehouse_type = "Warehouse type is required";
       if (!formData.warehouse_name)
         newErrors.warehouse_name = "Warehouse is required";
-      if (!formData.crop_year) {
-        newErrors.crop_year = "Crop year is required";
-      }
     }
 
     if (currentStep === 1) {
@@ -73,9 +72,8 @@ const AddPayment = () => {
       if (!formData.from_date) newErrors.from_date = "From date is required";
       if (!formData.to_date) newErrors.to_date = "To date is required";
       if (!formData.commodity) newErrors.commodity = "Commodity is required";
+      if (!formData.crop_year) newErrors.crop_year = "Crop year is required";
       if (!formData.rate) newErrors.rate = "Rate is required";
-      if (!formData.bill_amount)
-        newErrors.bill_amount = "Bill amount is required";
       if (!formData.bill_amount)
         newErrors.bill_amount = "Bill amount is required";
       if (!formData.depositers_name)
@@ -93,14 +91,15 @@ const AddPayment = () => {
     const requiredFields = [
       "district_name",
       "branch_name",
+      "warehouse_type",
       "warehouse_name",
       "month",
       "financial_year",
       "from_date",
       "to_date",
       "commodity",
+      "crop_year",
       "rate",
-      "bill_amount",
       "bill_amount",
       "depositers_name",
     ];
