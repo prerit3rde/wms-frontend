@@ -877,13 +877,14 @@ const getCropYearFromCommodity = (commodity) => {
         qtr: "qtr",
         remarks: "remarks",
         amount_deducted_against_gain: "amount_deducted_against_gain_loss",
+        "20_deduction_amount_against_gain": "deduction_20_percent",
       };
 
       const normalizeKeys = (row) => {
         const newRow = {};
         Object.keys(row).forEach((key) => {
           const cleanKey = key.toString().trim().toLowerCase()
-            .replace(/\s+/g, "_").replace(/[.%()]/g, "").replace(/__+/g, "_");
+            .replace(/\s+/g, "_").replace(/[%()]/g, "").replace(/__+/g, "_");
           let mappedKey = keyMapping[cleanKey] || cleanKey;
           if (mappedKey === "gdn_no") mappedKey = "warehouse_no";
           newRow[mappedKey] = row[key];
@@ -914,30 +915,15 @@ const getCropYearFromCommodity = (commodity) => {
         district_name: row.district_name,
       }));
 
-      let warehouses = [];
-      try {
-        const warehousesRes = await axios.get("/warehouses");
-        warehouses = warehousesRes.data.data;
-      } catch (err) {
-        console.error("Failed to fetch warehouses", err);
-      }
-
-      const enrichedData = finalData.map((row) => {
-        const match = warehouses.find(
-          (w) => w.warehouse_name === row.warehouse_name && w.branch_name === row.branch_name
-        );
-        return { ...row, cropData: match?.cropData || [] };
-      });
-
       const newCropYears = new Set(cropYears);
       finalData.forEach((row) => {
         if (row.crop_year) newCropYears.add(row.crop_year);
       });
 
       setCropYears([...newCropYears]);
-      setFullData(enrichedData);
+      setFullData(finalData);
       setPreviewPage(1); // Reset to first page
-      setPreviewData(enrichedData.slice(0, 50));
+      setPreviewData(finalData.slice(0, 50));
       setShowPreview(true);
       setLoadingImport(false);
     } catch (err) {
@@ -1021,10 +1007,12 @@ const toTitleCase = (str) => {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
-const previewColumns = Object.keys(previewData[0] || {}).map((key) => ({
-  key,
-  label: fieldLabels[key] || toTitleCase(key),
-}));
+const previewColumns = Object.keys(previewData[0] || {})
+  .filter((key) => key !== "id" && key !== "cropData")
+  .map((key) => ({
+    key,
+    label: fieldLabels[key] || toTitleCase(key),
+  }));
 
 return (
   <div className="space-y-6">
