@@ -43,8 +43,8 @@ const DashboardHome = () => {
 
     const fileName =
       type === "payment"
-        ? "payment_fy_variation_20.xlsx"
-        : "warehouse_import_updated.xlsx";
+        ? "JVS 2024-25.xlsx"
+        : "ANUBANDH.xlsx";
 
     const url = `${baseURL}/samples/${fileName}`;
 

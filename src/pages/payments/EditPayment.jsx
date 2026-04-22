@@ -321,16 +321,15 @@ const EditPayment = () => {
       <h1 className="text-2xl font-semibold">Edit Payment</h1>
 
       {/* ================= STEPPER ================= */}
-      <div className="relative mb-10">
+      <div className="relative mb-10 w-[50%]">
         <div className="flex justify-between relative z-10">
           {steps.map((_, i) => (
             <div key={i}>
               <div
-                className={`w-10 h-10 flex items-center justify-center rounded-full border-2 font-semibold ${
-                  i <= currentStep
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-400 border-gray-300"
-                }`}
+                className={`w-10 h-10 flex items-center justify-center rounded-full border-2 font-semibold ${i <= currentStep
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white text-gray-400 border-gray-300"
+                  }`}
               >
                 {i + 1}
               </div>
@@ -419,23 +418,23 @@ const EditPayment = () => {
             </FormField>
 
             <FormField label="Bill Type">
-            <select
-              name="bill_type"
-              value={formData.bill_type}
-              onChange={handleChange}
-              className="w-full border rounded-lg p-2"
-              disabled={isLocked}
-            >
-              <option value="">Select Bill Type</option>
-              {formData.bill_type && !filteredTypes.includes(formData.bill_type) && (
-                <option value={formData.bill_type}>{formData.bill_type}</option>
-              )}
-              {filteredTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
+              <select
+                name="bill_type"
+                value={formData.bill_type}
+                onChange={handleChange}
+                className="w-full border rounded-lg p-2"
+                disabled={isLocked}
+              >
+                <option value="">Select Bill Type</option>
+                {formData.bill_type && !filteredTypes.includes(formData.bill_type) && (
+                  <option value={formData.bill_type}>{formData.bill_type}</option>
+                )}
+                {filteredTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
             </FormField>
 
             <FormField label="Month">
@@ -516,7 +515,7 @@ const EditPayment = () => {
               />
             </FormField>
 
-            <FormField label="From Date">
+            {/* <FormField label="From Date">
               <Input
                 type="text"
                 name="from_date"
@@ -534,7 +533,7 @@ const EditPayment = () => {
                 onChange={handleChange}
                 disabled={isLocked}
               />
-            </FormField>
+            </FormField> */}
 
             <FormField label="Commodity">
               <Input
@@ -547,34 +546,34 @@ const EditPayment = () => {
             </FormField>
 
             <FormField label="Crop Year">
-            <select
-              name="crop_year"
-              value={formData.crop_year}
-              onChange={(e) => {
-                const cropYear = e.target.value;
+              <select
+                name="crop_year"
+                value={formData.crop_year}
+                onChange={(e) => {
+                  const cropYear = e.target.value;
 
-                const cropData = selectedWarehouse?.cropData?.find(
-                  (c) => c.crop_year === cropYear,
-                );
+                  const cropData = selectedWarehouse?.cropData?.find(
+                    (c) => c.crop_year === cropYear,
+                  );
 
-                setFormData({
-                  ...formData,
-                  crop_year: cropYear,
-                  rate: cropData?.scheme_rate_amount || 0,
-                });
-              }}
-              className="w-full border rounded-lg p-2"
-            >
-              <option value="">Select Crop Year</option>
-              {formData.crop_year && !selectedWarehouse?.cropData?.some(c => c.crop_year === formData.crop_year) && (
-                <option value={formData.crop_year}>{formData.crop_year}</option>
-              )}
-              {selectedWarehouse?.cropData?.map((c) => (
-                <option key={c.crop_year} value={c.crop_year}>
-                  {c.crop_year}
-                </option>
-              ))}
-            </select>
+                  setFormData({
+                    ...formData,
+                    crop_year: cropYear,
+                    rate: cropData?.scheme_rate_amount || 0,
+                  });
+                }}
+                className="w-full border rounded-lg p-2"
+              >
+                <option value="">Select Crop Year</option>
+                {formData.crop_year && !selectedWarehouse?.cropData?.some(c => c.crop_year === formData.crop_year) && (
+                  <option value={formData.crop_year}>{formData.crop_year}</option>
+                )}
+                {selectedWarehouse?.cropData?.map((c) => (
+                  <option key={c.crop_year} value={c.crop_year}>
+                    {c.crop_year}
+                  </option>
+                ))}
+              </select>
             </FormField>
 
             <FormField label="Rate">
