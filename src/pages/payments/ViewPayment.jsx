@@ -152,11 +152,18 @@ const ViewPayment = () => {
         {/* Deductions */}
         <Section title="Deductions">
           <Field label="TDS" value={currentPayment.tds} />
-          <Field label="EMI" value={currentPayment.emi_amount} />
+          <Field label="EMI Amount" value={currentPayment.emi_amount} />
+          <Field label="20% Deduction" value={currentPayment.deduction_20_percent} />
           <Field label="Penalty" value={currentPayment.penalty} />
+          <Field label="Medicine" value={currentPayment.medicine} />
+          <Field label="EMI FDR Interest" value={currentPayment.emi_fdr_interest} />
+          <Field label="Gain Shortage Deduction" value={currentPayment.gain_shortage_deduction} />
+          <Field label="Stock Shortage Deduction" value={currentPayment.stock_shortage_deduction} />
+          <Field label="Bank Solvancy" value={currentPayment.bank_solvancy} />
           <Field label="Insurance" value={currentPayment.insurance} />
-          <Field label="Other Deduction" value={currentPayment.other_deduction_amount} />
-          <Field label="Reason" value={currentPayment.other_deductions_reason} />
+          <Field label="Other Deduction Amount" value={currentPayment.other_deduction_amount} />
+          <Field label="Other Deductions Reason" value={currentPayment.other_deductions_reason} />
+          <Field label="Pay To JVS Amount" value={currentPayment.pay_to_jvs_amount} />
         </Section>
 
         {/* Payment */}

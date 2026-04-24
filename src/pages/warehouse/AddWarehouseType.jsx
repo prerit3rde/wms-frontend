@@ -4,13 +4,16 @@ import {
   createWarehouseType,
   updateWarehouseType,
   deleteWarehouseType,
+  setDefaultWarehouseType,
+  unsetDefaultWarehouseType,
 } from "./warehouseType.service";
 import Button from "../../components/global/Button";
 import Input from "../../components/global/Input";
 import { useNavigate } from "react-router-dom";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Star } from "lucide-react";
 import Card from "../../components/global/Card";
 import Table from "../../components/global/Table";
+import toast from "react-hot-toast";
 
 const AddWarehouseType = () => {
   const [typeName, setTypeName] = useState("");
@@ -40,6 +43,22 @@ const AddWarehouseType = () => {
     setTypeName(type.name);
     setEditId(type.id);
     setError("");
+  };
+
+  /* ================= SET DEFAULT ================= */
+  const handleSetDefault = async (type) => {
+    try {
+      if (type.is_default) {
+        await unsetDefaultWarehouseType(type.id);
+        toast.success(`"${type.name}" is no longer the default`);
+      } else {
+        await setDefaultWarehouseType(type.id);
+        toast.success(`"${type.name}" is now the default warehouse type`);
+      }
+      fetchTypes();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update default");
+    }
   };
 
   /* ================= SUBMIT ================= */
@@ -83,12 +102,35 @@ const AddWarehouseType = () => {
     {
       key: "name",
       label: "Warehouse Type Name",
+      render: (value, row) => (
+        <div className="flex items-center gap-2">
+          {value}
+          {row.is_default === 1 && (
+            <span className="text-xs bg-yellow-100 text-yellow-700 border border-yellow-300 px-2 py-0.5 rounded-full font-medium">
+              Default
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       key: "actions",
       label: <div className="text-right w-full pr-2">Actions</div>,
       render: (_, type) => (
         <div className="flex justify-end gap-2">
+          {/* SET DEFAULT */}
+          <button
+            onClick={() => handleSetDefault(type)}
+            title={type.is_default ? "Currently Default" : "Set as Default"}
+            className={`cursor-pointer p-2 rounded-lg transition ${
+              type.is_default
+                ? "bg-yellow-400 text-white"
+                : "bg-gray-100 text-gray-400 hover:bg-yellow-100 hover:text-yellow-600"
+            }`}
+          >
+            <Star size={16} fill={type.is_default ? "currentColor" : "none"} />
+          </button>
+
           {/* EDIT */}
           <button
             onClick={() => handleEdit(type)}
@@ -145,7 +187,27 @@ const AddWarehouseType = () => {
                 <Button type="submit" className="w-full">
                   {editId ? "Update Warehouse Type" : "Save Warehouse Type"}
                 </Button>
+
+                {editId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setEditId(null);
+                      setTypeName("");
+                      setError("");
+                    }}
+                  >
+                    Cancel Edit
+                  </Button>
+                )}
               </form>
+
+              <p className="mt-4 text-xs text-gray-500 flex items-center gap-1">
+                <Star size={12} className="text-yellow-500" fill="currentColor" />
+                Click the star icon on a type to set it as the default for imports.
+              </p>
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Button from "../../components/global/Button";
 import Table from "../../components/global/Table";
 import axios from "../../services/axios";
@@ -15,27 +15,35 @@ const reportTypes = [
 export default function Reports() {
   const [reportType, setReportType] = useState("");
   const [financialYear, setFinancialYear] = useState("");
-
   const [financialYears, setFinancialYears] = useState([]);
-
   const [month, setMonth] = useState("");
-
   const [cropYear, setCropYear] = useState("");
   const [cropYears, setCropYears] = useState([]);
 
+  // New filters
+  const [warehouseName, setWarehouseName] = useState("");
+  const [warehouseNames, setWarehouseNames] = useState([]);
+  const [billType, setBillType] = useState("");
+  const [billTypes, setBillTypes] = useState([]);
+  const [warehouseType, setWarehouseType] = useState("");
+  const [warehouseTypes, setWarehouseTypes] = useState([]);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
   const [previewData, setPreviewData] = useState([]);
   const [reports, setReports] = useState([]);
-
   const [loading, setLoading] = useState(false);
-
   const [noDataMessage, setNoDataMessage] = useState("");
+
+  const previewLimit = 50;
+  const [previewPage, setPreviewPage] = useState(1);
+  const previewTotalPages = Math.ceil(previewData.length / previewLimit);
 
   const fetchCropYears = async () => {
     const res = await axios.get("/warehouses");
     const years = res.data.data.flatMap(
       (w) => w.cropData?.map((c) => c.crop_year) || [],
     );
-
     setCropYears([...new Set(years)]);
   };
 
@@ -55,6 +63,13 @@ export default function Reports() {
       const res = await axios.get("/reports/financial-years");
       setFinancialYears(res.data.data.financialYears || []);
       setCropYears(res.data.data.cropYears || []);
+
+      // Fetch warehouse/bill type filter options from payments
+      const filterRes = await axios.get("/payments/filters");
+      const filters = filterRes.data.data || {};
+      setWarehouseNames(filters.warehouseNames?.map(w => w.warehouse_name).filter(Boolean) || []);
+      setBillTypes(filters.billTypes || []);
+      setWarehouseTypes(filters.warehouseTypes?.map(t => t.warehouse_type).filter(Boolean) || []);
     } catch (err) {
       console.error(err);
     }
@@ -73,9 +88,7 @@ export default function Reports() {
   /* ================= PREVIEW REPORT ================= */
   const handlePreview = async () => {
     if (!reportType) {
-      toast("Please select a report type", {
-        icon: "⚠️",
-      });
+      toast("Please select a report type", { icon: "⚠️" });
       return;
     }
 
@@ -83,7 +96,7 @@ export default function Reports() {
       setLoading(true);
 
       const res = await axios.get("/reports/preview", {
-        params: { reportType, financialYear, month, cropYear },
+        params: { reportType, financialYear, month, cropYear, warehouseName, billType, warehouseType, fromDate, toDate },
       });
 
       const data = res.data.data || [];
@@ -91,10 +104,11 @@ export default function Reports() {
       if (data.length === 0) {
         setPreviewData([]);
         setNoDataMessage(
-          `No data found for ${getReportLabel(reportType)} for financial year ${financialYear} of month ${month}`,
+          `No data found for ${getReportLabel(reportType)}${financialYear ? " for FY " + financialYear : ""}${month ? " of " + month : ""}`,
         );
       } else {
         setPreviewData(data);
+        setPreviewPage(1); // ✅ reset page on new data
         setNoDataMessage("");
       }
     } catch (err) {
@@ -119,6 +133,11 @@ export default function Reports() {
         financialYear,
         month,
         cropYear,
+        warehouseName,
+        billType,
+        warehouseType,
+        fromDate,
+        toDate,
       });
 
       // 🔥 AUTO DOWNLOAD
@@ -126,10 +145,7 @@ export default function Reports() {
 
       toast.success("Report Generated & Downloaded");
 
-      // refresh
       fetchReports();
-
-      // ✅ CLEAR PREVIEW (IMPORTANT)
       setPreviewData([]);
     } catch (err) {
       console.error(err);
@@ -542,6 +558,76 @@ export default function Reports() {
           </FormField>
         </div>
 
+        {/* Warehouse Name */}
+        <div className="flex flex-col w-[20%] m-0">
+          <FormField label="Warehouse Name">
+            <SearchableSelect
+              options={warehouseNames}
+              value={warehouseName}
+              onChange={setWarehouseName}
+              placeholder="Select or search..."
+            />
+          </FormField>
+        </div>
+
+        {/* Bill Type */}
+        <div className="flex flex-col w-[20%] m-0">
+          <FormField label="Bill Type">
+            <select
+              className="border rounded-lg px-3 py-2 cursor-pointer"
+              value={billType}
+              onChange={(e) => setBillType(e.target.value)}
+            >
+              <option value="">Select</option>
+              {billTypes.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </FormField>
+        </div>
+
+        {/* Warehouse Type */}
+        <div className="flex flex-col w-[20%] m-0">
+          <FormField label="Warehouse Type">
+            <select
+              className="border rounded-lg px-3 py-2 cursor-pointer"
+              value={warehouseType}
+              onChange={(e) => setWarehouseType(e.target.value)}
+            >
+              <option value="">Select</option>
+              {warehouseTypes.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </FormField>
+        </div>
+
+        {/* TDS-only: From Date & To Date */}
+        {reportType === "TDS" && (
+          <>
+            <div className="flex flex-col w-[20%] m-0">
+              <FormField label="From Date">
+                <input
+                  type="date"
+                  className="border rounded-lg px-3 py-2 cursor-pointer"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                />
+              </FormField>
+            </div>
+            <div className="flex flex-col w-[20%] m-0">
+              <FormField label="To Date">
+                <input
+                  type="date"
+                  className="border rounded-lg px-3 py-2 cursor-pointer"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                />
+              </FormField>
+            </div>
+          </>
+        )}
+
         {/* Preview Button */}
         <Button onClick={handlePreview} disabled={loading}>
           Generate Report
@@ -574,10 +660,7 @@ export default function Reports() {
           {/* ✅ SHOW TABLE */}
           {previewData.length > 0 && (
             <>
-              <div
-                className={`overflow-x-auto ${previewData.length > 25 ? "max-h-[500px] overflow-y-auto" : ""
-                  }`}
-              >
+              <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
                     {reportType === "TDS" && groupHeader && (
@@ -607,8 +690,9 @@ export default function Reports() {
                   </thead>
 
                   <tbody>
-                    {previewData.length > 0 ? (
-                      previewData.map((row, rowIndex) => (
+                    {previewData
+                      .slice((previewPage - 1) * previewLimit, previewPage * previewLimit)
+                      .map((row, rowIndex) => (
                         <tr
                           key={rowIndex}
                           className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
@@ -624,20 +708,75 @@ export default function Reports() {
                             </td>
                           ))}
                         </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td
-                          colSpan={previewColumns.length}
-                          className="px-6 py-4 text-center text-gray-500"
-                        >
-                          No data available
-                        </td>
-                      </tr>
-                    )}
+                      ))}
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination */}
+              {previewTotalPages > 1 && (
+                <div className="mt-4 flex flex-col md:flex-row items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200 gap-4">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Showing {(previewPage - 1) * previewLimit + 1} to{" "}
+                    {Math.min(previewPage * previewLimit, previewData.length)} of{" "}
+                    <span className="text-blue-600">{previewData.length}</span> records
+                  </span>
+
+                  <div className="flex items-center gap-1 overflow-x-auto max-w-full pb-1">
+                    <button
+                      disabled={previewPage === 1}
+                      onClick={() => setPreviewPage(1)}
+                      className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
+                    >
+                      First
+                    </button>
+                    <button
+                      disabled={previewPage === 1}
+                      onClick={() => setPreviewPage((p) => p - 1)}
+                      className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30 mr-2"
+                    >
+                      Prev
+                    </button>
+
+                    {[...Array(previewTotalPages)].map((_, i) => {
+                      const p = i + 1;
+                      if (p === 1 || p === previewTotalPages || (p >= previewPage - 2 && p <= previewPage + 2)) {
+                        return (
+                          <button
+                            key={p}
+                            onClick={() => setPreviewPage(p)}
+                            className={`min-w-[32px] px-2 py-1 text-xs border rounded transition ${
+                              previewPage === p
+                                ? "bg-blue-600 text-white border-blue-600"
+                                : "bg-white text-slate-600 hover:bg-slate-100 border-slate-300"
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        );
+                      }
+                      if (p === 2 && previewPage > 4) return <span key="dots1" className="px-1 text-slate-400">...</span>;
+                      if (p === previewTotalPages - 1 && previewPage < previewTotalPages - 3) return <span key="dots2" className="px-1 text-slate-400">...</span>;
+                      return null;
+                    })}
+
+                    <button
+                      disabled={previewPage === previewTotalPages}
+                      onClick={() => setPreviewPage((p) => p + 1)}
+                      className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30 ml-2"
+                    >
+                      Next
+                    </button>
+                    <button
+                      disabled={previewPage === previewTotalPages}
+                      onClick={() => setPreviewPage(previewTotalPages)}
+                      className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
+                    >
+                      Last
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <Button
                 variant="success"
@@ -669,3 +808,80 @@ const FormField = ({ label, children, error }) => (
     {error && <span className="text-red-500 text-sm mt-1">{error}</span>}
   </div>
 );
+
+const SearchableSelect = ({ options, value, onChange, placeholder }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredOptions = options.filter(opt =>
+    opt.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="relative w-full" ref={dropdownRef}>
+      <div
+        className="border rounded-lg px-3 py-2 cursor-pointer bg-white flex justify-between items-center"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className={value ? "text-gray-800 line-clamp-1" : "text-gray-500"}>{value || placeholder}</span>
+        <span className="text-gray-400 text-xs ml-2">▼</span>
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+          <div className="sticky top-0 bg-white p-2 border-b border-gray-100 z-10">
+            <input
+              type="text"
+              className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              placeholder="Type to search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="py-1">
+            <div
+              className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 ${!value ? "bg-blue-50 text-blue-600 font-medium" : "text-gray-700"}`}
+              onClick={() => {
+                onChange("");
+                setIsOpen(false);
+                setSearch("");
+              }}
+            >
+              -- Select None --
+            </div>
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((opt) => (
+                <div
+                  key={opt}
+                  className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 ${value === opt ? "bg-blue-50 text-blue-600 font-medium" : "text-gray-700"}`}
+                  onClick={() => {
+                    onChange(opt);
+                    setIsOpen(false);
+                    setSearch("");
+                  }}
+                >
+                  {opt}
+                </div>
+              ))
+            ) : (
+              <div className="px-3 py-3 text-gray-500 text-sm text-center">No results found</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+

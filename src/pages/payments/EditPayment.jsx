@@ -96,6 +96,7 @@ const EditPayment = () => {
 
   const [isTdsManual, setIsTdsManual] = useState(false);
   const [isDeductionManual, setIsDeductionManual] = useState(false);
+  const [isDeduction20Edited, setIsDeduction20Edited] = useState(false);
 
   const months = [
     "January",
@@ -152,6 +153,30 @@ const EditPayment = () => {
   }, [selectedWarehouse]);
 
   useEffect(() => {
+    if (formData.crop_year && selectedWarehouse?.cropData?.length) {
+      const cropData = selectedWarehouse.cropData.find(
+        (c) => c.crop_year === formData.crop_year,
+      );
+
+      // ✅ BANK SOLVANCY LOGIC
+      if (cropData) {
+        if (cropData.is_affidavit === false) {
+          setFormData((prev) => ({
+            ...prev,
+            bank_solvancy: "Certificate",
+          }));
+        } else {
+          setFormData((prev) => ({
+            ...prev,
+            bank_solvancy:
+              prev.bank_solvancy === "Certificate" ? 0 : prev.bank_solvancy,
+          }));
+        }
+      }
+    }
+  }, [formData.crop_year, selectedWarehouse]);
+
+  useEffect(() => {
     const loadWarehouses = async () => {
       const res = await axiosInstance.get("/warehouses");
       setWarehouses(res.data.data || []);
@@ -161,14 +186,20 @@ const EditPayment = () => {
 
   useEffect(() => {
     const billAmount = Number(formData.bill_amount || 0);
-
     const tdsValue = Number(formData.tds || 0);
+
+    const calculated20 = billAmount * 0.2;
+    const final20 = isDeduction20Edited
+      ? Number(formData.deduction_20_percent || 0)
+      : calculated20;
+
+    const totalJVAmount = Number(formData.total_jv_amount || 0);
 
     const totalDeductions =
       tdsValue +
       Number(formData.amount_deducted_against_gain_loss || 0) +
       Number(formData.emi_amount || 0) +
-      Number(formData.deduction_20_percent || 0) +
+      final20 +
       Number(formData.penalty || 0) +
       Number(formData.medicine || 0) +
       Number(formData.emi_fdr_interest || 0) +
@@ -182,7 +213,10 @@ const EditPayment = () => {
 
     setFormData((prev) => ({
       ...prev,
-      actual_passed_amount: billAmount.toFixed(2),
+      deduction_20_percent: isDeduction20Edited
+        ? prev.deduction_20_percent
+        : calculated20.toFixed(2),
+      actual_passed_amount: totalJVAmount.toFixed(2),
       pay_to_jvs_amount: payToJVS.toFixed(2),
     }));
   }, [
@@ -199,6 +233,8 @@ const EditPayment = () => {
     formData.bank_solvancy,
     formData.insurance,
     formData.other_deduction_amount,
+    formData.total_jv_amount,
+    isDeduction20Edited,
   ]);
 
   /* ================= FETCH PAYMENT ================= */
@@ -244,11 +280,14 @@ const EditPayment = () => {
 
     // detect manual override
     if (name === "tds") setIsTdsManual(true);
-    if (name === "deduction_20_percent") setIsDeductionManual(true);
+    if (name === "deduction_20_percent") {
+      setIsDeductionManual(true);
+      setIsDeduction20Edited(true);
+    }
 
     setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: value,
     }));
   };
 
@@ -587,6 +626,16 @@ const EditPayment = () => {
               />
             </FormField>
 
+            <FormField label="Bill Amount">
+              <Input
+                type="number"
+                name="bill_amount"
+                value={formData.bill_amount}
+                onChange={handleChange}
+                disabled={isLocked}
+              />
+            </FormField>
+
             <FormField label="Total JV Amount">
               <Input
                 type="number"
@@ -594,16 +643,6 @@ const EditPayment = () => {
                 value={formData.total_jv_amount}
                 onChange={handleChange}
                 placeholder="Total JV Amount"
-                disabled={isLocked}
-              />
-            </FormField>
-
-            <FormField label="Bill Amount">
-              <Input
-                type="number"
-                name="bill_amount"
-                value={formData.bill_amount}
-                onChange={handleChange}
                 disabled={isLocked}
               />
             </FormField>
@@ -689,7 +728,7 @@ const EditPayment = () => {
               />
             </FormField>
 
-            <FormField label="Amount Deducted Against Gain/Loss">
+            {/* <FormField label="Amount Deducted Against Gain/Loss">
               <Input
                 type="number"
                 name="amount_deducted_against_gain_loss"
@@ -697,7 +736,7 @@ const EditPayment = () => {
                 onChange={handleChange}
                 placeholder="Amount Deducted Against Gain/Loss"
               />
-            </FormField>
+            </FormField> */}
 
             <FormField label="EMI Amount">
               <Input
@@ -771,11 +810,17 @@ const EditPayment = () => {
 
             <FormField label="Bank Solvancy">
               <Input
-                type="number"
+                type={
+                  formData.bank_solvancy === "Certificate" ? "text" : "number"
+                }
                 name="bank_solvancy"
                 value={formData.bank_solvancy}
                 onChange={handleChange}
                 placeholder="Bank Solvancy"
+                readOnly={formData.bank_solvancy === "Certificate"}
+                className={
+                  formData.bank_solvancy === "Certificate" ? "bg-gray-100" : ""
+                }
               />
             </FormField>
 
@@ -799,16 +844,6 @@ const EditPayment = () => {
               />
             </FormField>
 
-            <FormField label="Other Deduction Reason">
-              <textarea
-                name="other_deductions_reason"
-                value={formData.other_deductions_reason}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-3"
-                placeholder="Other Deduction Reason"
-              />
-            </FormField>
-
             <FormField label="Pay To JVS Amount">
               <Input
                 type="number"
@@ -816,6 +851,16 @@ const EditPayment = () => {
                 value={formData.pay_to_jvs_amount}
                 placeholder="Pay To JVS Amount"
                 onChange={handleChange}
+              />
+            </FormField>
+
+            <FormField label="Other Deduction Reason">
+              <textarea
+                name="other_deductions_reason"
+                value={formData.other_deductions_reason}
+                onChange={handleChange}
+                className="w-full border rounded-lg p-3"
+                placeholder="Other Deduction Reason"
               />
             </FormField>
 

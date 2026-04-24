@@ -133,6 +133,7 @@ const AddPayment = () => {
   const [selectedWarehouse, setSelectedWarehouse] = useState(null);
 
   const [isTdsEdited, setIsTdsEdited] = useState(false);
+  const [isDeduction20Edited, setIsDeduction20Edited] = useState(false);
 
   const [formData, setFormData] = useState({
     district_name: "",
@@ -233,11 +234,19 @@ const AddPayment = () => {
       ? Number(formData.tds || 0) // user value
       : calculatedTDS; // auto value
 
+    const calculated20 = billAmount * 0.2;
+
+    const final20 = isDeduction20Edited
+      ? Number(formData.deduction_20_percent || 0)
+      : calculated20;
+
+    const totalJVAmount = Number(formData.total_jv_amount || 0);
+
     const totalDeductions =
       finalTDS +
       Number(formData.amount_deducted_against_gain_loss || 0) +
       Number(formData.emi_amount || 0) +
-      Number(formData.deduction_20_percent || 0) +
+      final20 +
       Number(formData.penalty || 0) +
       Number(formData.medicine || 0) +
       Number(formData.emi_fdr_interest || 0) +
@@ -249,17 +258,23 @@ const AddPayment = () => {
 
     const payToJVS = billAmount - totalDeductions;
 
+    if (payToJVS < 0) {
+      toast.error("⚠️ Deductions exceed the bill amount! Pay To JVS Amount is going negative. Please review your deductions.", { id: "negative-jvs" });
+    }
+
     setFormData((prev) => ({
       ...prev,
 
       // ✅ ALWAYS UPDATE if NOT edited
       tds: isTdsEdited ? prev.tds : calculatedTDS.toFixed(2),
+      deduction_20_percent: isDeduction20Edited ? prev.deduction_20_percent : calculated20.toFixed(2),
 
-      actual_passed_amount: billAmount.toFixed(2),
+      actual_passed_amount: totalJVAmount.toFixed(2),
       pay_to_jvs_amount: payToJVS.toFixed(2),
     }));
   }, [
     formData.bill_amount,
+    formData.tds,
     formData.amount_deducted_against_gain_loss,
     formData.emi_amount,
     formData.deduction_20_percent,
@@ -271,7 +286,9 @@ const AddPayment = () => {
     formData.bank_solvancy,
     formData.insurance,
     formData.other_deduction_amount,
+    formData.total_jv_amount,
     isTdsEdited, // ✅ important
+    isDeduction20Edited,
   ]);
 
   /* ================= FETCH WAREHOUSES ================= */
@@ -348,6 +365,21 @@ const AddPayment = () => {
           approved_storage_capacity: cropData.approved_storage_capacity || 0,
         }));
       }
+
+      // ✅ BANK SOLVANCY LOGIC
+      if (cropData) {
+        if (cropData.is_affidavit === false) {
+          setFormData(prev => ({
+            ...prev,
+            bank_solvancy: "Certificate"
+          }));
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            bank_solvancy: prev.bank_solvancy === "Certificate" ? 0 : prev.bank_solvancy
+          }));
+        }
+      }
     }
   }, [formData.crop_year, selectedWarehouse]);
 
@@ -423,6 +455,10 @@ const AddPayment = () => {
 
     if (name === "tds") {
       setIsTdsEdited(true); // ✅ user manually changed
+    }
+
+    if (name === "deduction_20_percent") {
+      setIsDeduction20Edited(true);
     }
 
     setFormData((prev) => ({
@@ -520,11 +556,10 @@ const AddPayment = () => {
           {steps.map((_, i) => (
             <div key={i}>
               <div
-                className={`w-10 h-10 flex items-center justify-center rounded-full border-2 font-semibold ${
-                  i <= currentStep
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-400 border-gray-300"
-                }`}
+                className={`w-10 h-10 flex items-center justify-center rounded-full border-2 font-semibold ${i <= currentStep
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white text-gray-400 border-gray-300"
+                  }`}
               >
                 {i + 1}
               </div>
@@ -997,7 +1032,7 @@ const AddPayment = () => {
               />
             </FormField>
 
-            <FormField label="Amount Deducted Against Gain/Loss">
+            {/* <FormField label="Amount Deducted Against Gain/Loss">
               <Input
                 type="number"
                 name="amount_deducted_against_gain_loss"
@@ -1005,7 +1040,7 @@ const AddPayment = () => {
                 onChange={handleChange}
                 placeholder="Amount Deducted Against Gain/Loss"
               />
-            </FormField>
+            </FormField> */}
 
             <FormField label="EMI Amount">
               <Input
@@ -1079,11 +1114,13 @@ const AddPayment = () => {
 
             <FormField label="Bank Solvancy">
               <Input
-                type="number"
+                type={formData.bank_solvancy === "Certificate" ? "text" : "number"}
                 name="bank_solvancy"
                 value={formData.bank_solvancy}
                 onChange={handleChange}
                 placeholder="Bank Solvancy"
+                readOnly={formData.bank_solvancy === "Certificate"}
+                className={formData.bank_solvancy === "Certificate" ? "bg-gray-100" : ""}
               />
             </FormField>
 
@@ -1107,16 +1144,6 @@ const AddPayment = () => {
               />
             </FormField>
 
-            <FormField label="Other Deduction Reason">
-              <textarea
-                name="other_deductions_reason"
-                value={formData.other_deductions_reason}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-3"
-                placeholder="Other Deduction Reason"
-              />
-            </FormField>
-
             <FormField label="Pay To JVS Amount">
               <Input
                 type="number"
@@ -1124,6 +1151,16 @@ const AddPayment = () => {
                 value={formData.pay_to_jvs_amount}
                 onChange={handleChange}
                 placeholder="Pay To JVS Amount"
+              />
+            </FormField>
+
+            <FormField label="Other Deduction Reason">
+              <textarea
+                name="other_deductions_reason"
+                value={formData.other_deductions_reason}
+                onChange={handleChange}
+                className="w-full border rounded-lg p-3"
+                placeholder="Other Deduction Reason"
               />
             </FormField>
 

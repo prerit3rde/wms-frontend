@@ -478,8 +478,12 @@ const WarehouseList = () => {
   };
 
   const handleBulkInsert = async () => {
+    setIsImportLoading(true);
     try {
       const transformedData = previewData.map(transformRow);
+
+      // Reverse order so first row of sheet appears first in newest-first sorted list
+      transformedData.reverse();
 
       await axios.post("/warehouses/bulk-insert", {
         data: transformedData,
@@ -500,6 +504,8 @@ const WarehouseList = () => {
       await fetchFilters(); // ✅ SYNC FILTERS AFTER IMPORT
     } catch (error) {
       toast.error("Import failed!");
+    } finally {
+      setIsImportLoading(false);
     }
   };
 
