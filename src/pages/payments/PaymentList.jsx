@@ -250,6 +250,9 @@ const PaymentList = () => {
 
   const uniqueTypes = [...new Set(filteredTypes)];
 
+  const uniqueBranches = [...new Map(filteredBranches.map(b => [b.branch_name, b])).values()];
+  const uniqueWarehouses = [...new Map(filteredWarehouses.map(w => [w.warehouse_name, w])).values()];
+
   /* ================= RESET ACTIVE ================= */
   const isFilterActive = useMemo(() => {
     return (
@@ -699,6 +702,12 @@ const PaymentList = () => {
   const [availableSheets, setAvailableSheets] = useState([]);
   const [selectedSheet, setSelectedSheet] = useState("");
   const [previewPage, setPreviewPage] = useState(1);
+
+  // IMPORT PROGRESS STATE
+  const [importProgress, setImportProgress] = useState(0);
+  const [importStatus, setImportStatus] = useState("");
+  const [importFileInfo, setImportFileInfo] = useState({ name: "", size: 0 });
+  const [importLoadedSize, setImportLoadedSize] = useState(0);
   const previewLimit = 50;
   const previewTotalPages = Math.ceil(fullData.length / previewLimit);
 
@@ -782,7 +791,7 @@ const PaymentList = () => {
     const str = text.toString().trim();
 
     // 1. STRICT COLUMN PROTECTION
-    // These fields are always English in your sheets.
+    // These fields are often English or protected in your sheets.
     const PROTECTED_FIELDS = [
       "district_name", "scheme", "pan_no", "pan_holder",
       "total_amount", "amount_paid", "balance_amount",
@@ -804,26 +813,26 @@ const PaymentList = () => {
     const upperStr = str.toUpperCase();
 
     // 5. Whitelist Check (District names and common WMS words)
-    const isWhitelisted = ENGLISH_WHITELIST.some(word => upperStr.includes(word));
+    const isWhitelisted = [...ENGLISH_WHITELIST, "CHHANERA", "KASRAWAD", "DHAMNOD"].some(word => upperStr.includes(word));
     if (isWhitelisted) return str;
 
     // 6. Consonant Cluster Check (KrutiDev often has 3+ consonants without vowels)
-    const hasWeirdCluster = /[^aeiou]{3,}/i.test(str);
-    if (hasWeirdCluster && !isWhitelisted) {
-      try { return kru2uni(str).trim(); } catch (e) { return str; }
-    }
+    // English words rarely have 4+ consonants in a row (e.g. 'str' is 3, 'rhythm' is 5 but has 'y')
+    const hasWeirdCluster = /[^aeiouy]{4,}/i.test(str);
 
     // 7. Case & Vowel Analysis
+    const vowels = (str.match(/[aeiou]/gi) || []).length;
+    const ratio = vowels / str.length;
+    const hasHealthyVowels = ratio > 0.25 && str.length > 3;
+    const hasKrutiMarkers = /[\[\]\\;{}=?+¾¼½]/.test(str);
+
+    // English names in these sheets are almost always Proper Case (Indore) or ALL CAPS (INDORE)
     const isProperCase = /^[A-Z][a-z0-9]+(\s+[A-Z][a-z0-9]+)*$/.test(str);
     const isAllCaps = /^[A-Z0-9\s,./&()*'#_-]+$/.test(str) && str.length > 2;
 
-    // Higher threshold (38%) for English names
-    const vowels = (str.match(/[aeiou]/gi) || []).length;
-    const ratio = vowels / str.length;
-    const hasHealthyVowels = ratio > 0.38 && str.length > 3;
-
-    if (isAllCaps) return str;
-    if (isProperCase && hasHealthyVowels) return str;
+    // If it has healthy vowels, no "KrutiDev markers", and NO weird consonant clusters, it's English
+    if ((isProperCase || isAllCaps) && hasHealthyVowels && !hasWeirdCluster && !hasKrutiMarkers) return str;
+    if (isAllCaps && !hasWeirdCluster && !hasKrutiMarkers && str.length > 3) return str;
 
     // 8. Default to Conversion
     try {
@@ -907,12 +916,54 @@ const PaymentList = () => {
   const processSheetData = async (sheetName, wb) => {
     try {
       setLoadingImport(true);
+      setImportStatus("Extracting sheet data...");
+      setImportProgress(35);
+
+      // Yield to UI
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      setImportStatus("Optimizing sheet range...");
+      setImportProgress(40);
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const sheet = wb.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(sheet, {
-        range: 3, // 🔥 skip first 3 rows (0-based index)
+      
+      // DEFENSIVE RANGE DETECTION (Fixes "ghost" rows/columns in sparse sheets)
+      const ref = XLSX.utils.decode_range(sheet['!ref'] || "A1:A1");
+      let lastRow = ref.s.r;
+      let lastCol = ref.s.c;
+
+      for (let r = ref.e.r; r >= ref.s.r; r--) {
+        for (let c = ref.e.c; c >= ref.s.c; c--) {
+          if (sheet[XLSX.utils.encode_cell({r, c})]) {
+            if (r > lastRow) lastRow = r;
+            if (c > lastCol) lastCol = c;
+            break; 
+          }
+        }
+        if (lastRow > ref.s.r && r < lastRow - 100) break; // Optimization: stop if we found data and then 100 empty rows
+      }
+      sheet['!ref'] = XLSX.utils.encode_range({ s: ref.s, e: { r: lastRow, c: lastCol } });
+
+      const jsonDataRaw = XLSX.utils.sheet_to_json(sheet, {
+        range: 3, 
         raw: false,
-        defval: "", // avoid undefined values
+        defval: "", 
       });
+
+      // FILTER OUT EMPTY OR HEADER ROWS
+      const jsonData = jsonDataRaw.filter(row => {
+        const values = Object.values(row).filter(v => v !== null && v !== "");
+        return values.length > 5; // A valid row should have at least 5 columns filled
+      });
+
+      setImportProgress(50);
+      setImportStatus(`Processing ${jsonData.length} records...`);
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      setImportProgress(50);
+      setImportStatus("Normalizing data...");
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       const keyMapping = {
         id: "id",
@@ -968,28 +1019,50 @@ const PaymentList = () => {
         return newRow;
       };
 
-      const formattedData = jsonData.map((row) => {
-        const normalizedRow = normalizeKeys(row);
-        const periodData = processPeriod(normalizedRow.period);
-        return {
-          ...normalizedRow,
-          from_date: periodData.from_date || null,
-          to_date: periodData.to_date || null,
-          month: periodData.month || "",
-          financial_year: periodData.financial_year || "",
-          crop_year: normalizedRow.crop_year || getCropYearFromCommodity(normalizedRow.commodity) || "",
-          payment_date: formatExcelDate(normalizedRow.payment_date),
-        };
-      });
+      setImportProgress(60);
+      setImportStatus("Formatting data chunks...");
+      
+      const formattedData = [];
+      const CHUNK_SIZE = 500;
+      for (let i = 0; i < jsonData.length; i += CHUNK_SIZE) {
+        const chunk = jsonData.slice(i, i + CHUNK_SIZE);
+        const processedChunk = chunk.map((row) => {
+          const normalizedRow = normalizeKeys(row);
+          const periodData = processPeriod(normalizedRow.period);
+          return {
+            ...normalizedRow,
+            from_date: periodData.from_date || null,
+            to_date: periodData.to_date || null,
+            month: periodData.month || "",
+            financial_year: periodData.financial_year || "",
+            crop_year: normalizedRow.crop_year || getCropYearFromCommodity(normalizedRow.commodity) || "",
+            payment_date: formatExcelDate(normalizedRow.payment_date),
+          };
+        });
+        formattedData.push(...processedChunk);
+        setImportProgress(60 + Math.round((i / jsonData.length) * 20));
+        await new Promise(resolve => setTimeout(resolve, 50)); // Yield to UI
+      }
 
-      const cleanedData = removeEmptyColumns(formattedData);
+      setImportProgress(85);
+      setImportStatus("Converting text chunks...");
+      const finalData = [];
+      for (let i = 0; i < formattedData.length; i += CHUNK_SIZE) {
+        const chunk = formattedData.slice(i, i + CHUNK_SIZE);
+        const processedChunk = chunk.map((row) => ({
+          ...row,
+          branch_name: convertHindi(row.branch_name, "branch_name"),
+          warehouse_name: convertHindi(row.warehouse_name, "warehouse_name"),
+          district_name: row.district_name,
+        }));
+        finalData.push(...processedChunk);
+        setImportProgress(85 + Math.round((i / formattedData.length) * 10));
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
 
-      const finalData = cleanedData.map((row) => ({
-        ...row,
-        branch_name: convertHindi(row.branch_name),
-        warehouse_name: convertHindi(row.warehouse_name),
-        district_name: row.district_name,
-      }));
+      setImportProgress(95);
+      setImportStatus("Finalizing preview...");
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       const newCropYears = new Set(cropYears);
       finalData.forEach((row) => {
@@ -1001,7 +1074,9 @@ const PaymentList = () => {
       setPreviewPage(1); // Reset to first page
       setPreviewData(finalData.slice(0, 50));
       setShowPreview(true);
+      setImportProgress(100);
       setLoadingImport(false);
+      setImportStatus("");
     } catch (err) {
       console.error("Sheet processing failed", err);
       toast.error("Sheet processing failed");
@@ -1018,26 +1093,52 @@ const PaymentList = () => {
     const file = e.target.files[0];
     if (!file) return;
 
+    setImportFileInfo({
+      name: file.name,
+      size: (file.size / (1024 * 1024)).toFixed(2), // MB
+    });
+    setImportStatus("Reading file...");
+    setImportProgress(0);
+    setImportLoadedSize(0);
     setLoadingImport(true);
     const reader = new FileReader();
 
-    reader.onload = async (evt) => {
-      try {
-        const data = new Uint8Array(evt.target.result);
-        const wb = XLSX.read(data, { type: "array" });
-        setWorkbook(wb);
-        setAvailableSheets(wb.SheetNames);
-
-        const firstSheet = wb.SheetNames[0];
-        setSelectedSheet(firstSheet);
-        await processSheetData(firstSheet, wb);
-
-        fileInputRef.current.value = "";
-      } catch (err) {
-        console.error("File reading failed", err);
-        toast.error("File reading failed");
-        setLoadingImport(false);
+    reader.onprogress = (evt) => {
+      if (evt.lengthComputable) {
+        const percent = Math.round((evt.loaded / evt.total) * 20); // First 20% for reading
+        setImportProgress(percent);
+        setImportLoadedSize((evt.loaded / (1024 * 1024)).toFixed(2));
       }
+    };
+
+    reader.onload = (evt) => {
+      setImportStatus("Parsing workbook...");
+      setImportProgress(25);
+      
+      // Delay to allow "Parsing workbook..." to show
+      setTimeout(async () => {
+        try {
+          const data = new Uint8Array(evt.target.result);
+          const wb = XLSX.read(data, { type: "array" });
+          setWorkbook(wb);
+          setAvailableSheets(wb.SheetNames);
+
+          const firstSheet = wb.SheetNames[0];
+          setSelectedSheet(firstSheet);
+          setImportProgress(30);
+          
+          // Delay to show 30%
+          setTimeout(async () => {
+            await processSheetData(firstSheet, wb);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+          }, 100);
+        } catch (err) {
+          console.error("File reading failed", err);
+          toast.error("File reading failed");
+          setLoadingImport(false);
+          setImportStatus("");
+        }
+      }, 100);
     };
 
     reader.onerror = () => {
@@ -1051,10 +1152,20 @@ const PaymentList = () => {
   const handleBulkInsert = async () => {
     try {
       setLoadingImport(true); // ✅ START LOADER
+      setImportStatus("Uploading to server...");
+      setImportProgress(0);
 
       const res = await axios.post("/payments/bulk-insert", {
         data: fullData,
         mode: importMode,
+      }, {
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setImportProgress(percentCompleted);
+            setImportLoadedSize((progressEvent.loaded / (1024 * 1024)).toFixed(2));
+          }
+        }
       });
 
       toast.success(res.data.message || "Payment imported successfully!");
@@ -1073,6 +1184,8 @@ const PaymentList = () => {
       toast.error(error.response?.data?.message || "Import failed!");
     } finally {
       setLoadingImport(false); // ✅ STOP LOADER
+      setImportProgress(0);
+      setImportStatus("");
     }
   };
 
@@ -1130,11 +1243,84 @@ const PaymentList = () => {
         </div>
       </div>
 
-      {/* LOADER OVERLAY */}
+      {/* WINDOWS-STYLE LOADER OVERLAY */}
       {loadingImport && (
-        <div className="fixed inset-0 bg-white/50 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="mt-4 text-lg font-semibold text-blue-800">Processing File, Please wait...</p>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-300">
+            {/* Header */}
+            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                  <Import size={20} />
+                </div>
+                <h3 className="font-bold text-slate-800">Importing Payments</h3>
+              </div>
+              <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full uppercase tracking-wider">
+                {importStatus.split(' ')[0]}
+              </span>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-6">
+              {/* File Info */}
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-slate-500 flex justify-between">
+                  <span>File Name:</span>
+                  <span className="text-slate-800 truncate max-w-[200px]">{importFileInfo.name}</span>
+                </p>
+                {selectedSheet && (
+                  <p className="text-sm font-medium text-slate-500 flex justify-between">
+                    <span>Sheet Name:</span>
+                    <span className="text-blue-600 font-bold truncate max-w-[200px]">{selectedSheet}</span>
+                  </p>
+                )}
+                <p className="text-sm font-medium text-slate-500 flex justify-between">
+                  <span>Total Size:</span>
+                  <span className="text-slate-800">{importFileInfo.size} MB</span>
+                </p>
+              </div>
+
+              {/* Progress Section */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-end">
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-slate-700">{importStatus}</p>
+                    <p className="text-xs text-slate-500">
+                      {importStatus.includes("Uploading") 
+                        ? `${importLoadedSize} MB of ${importFileInfo.size} MB`
+                        : "Preparing data..."}
+                    </p>
+                  </div>
+                  <span className="text-2xl font-black text-blue-600 leading-none">
+                    {importProgress}%
+                  </span>
+                </div>
+
+                {/* Progress Bar Container */}
+                <div className="h-4 w-full bg-slate-200 rounded-full overflow-hidden border border-slate-300 shadow-inner">
+                  <div 
+                    className="h-full bg-blue-600 transition-all duration-500 ease-out relative"
+                    style={{ width: `${importProgress}%` }}
+                  >
+                    {/* Animated shine effect */}
+                    <div className="absolute inset-0 w-full h-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Note */}
+              <p className="text-[11px] text-center text-slate-400 italic">
+                Please do not close this window or refresh the page until the process is complete.
+              </p>
+            </div>
+          </div>
+
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes shimmer {
+              0% { transform: translateX(-100%); }
+              100% { transform: translateX(100%); }
+            }
+          `}} />
         </div>
       )}
 
@@ -1295,8 +1481,8 @@ const PaymentList = () => {
               className="px-4 py-2 border rounded-lg"
             >
               <option value="">Select Branch</option>
-              {filteredBranches?.map((b) => (
-                <option key={b.branch_name} value={b.branch_name}>
+              {uniqueBranches?.map((b) => (
+                <option key={`${b.branch_name}-${b.id || Math.random()}`} value={b.branch_name}>
                   {b.branch_name}
                 </option>
               ))}
@@ -1328,8 +1514,8 @@ const PaymentList = () => {
               className="px-4 py-2 border rounded-lg"
             >
               <option value="">Select Warehouse</option>
-              {filteredWarehouses?.map((w) => (
-                <option key={w.warehouse_name} value={w.warehouse_name}>
+              {uniqueWarehouses?.map((w) => (
+                <option key={`${w.warehouse_name}-${w.id || Math.random()}`} value={w.warehouse_name}>
                   {w.warehouse_name}
                 </option>
               ))}
@@ -1339,7 +1525,7 @@ const PaymentList = () => {
       </Card>
 
       {showPreview && (
-        <Card className="p-6 max-w-[1217px] overflow-x-auto overflow-y-hidden whitespace-nowrap w-full">
+        <Card className="p-6 overflow-x-auto overflow-y-hidden whitespace-nowrap w-full">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Preview Imported Data</h2>
 

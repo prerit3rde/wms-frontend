@@ -113,7 +113,7 @@ const initialState = {
   total: 0,
   totalPages: 0,
   page: 1,
-  limit: 10,
+  limit: 50,
   loading: false,
   error: null,
 };

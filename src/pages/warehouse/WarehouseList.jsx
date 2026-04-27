@@ -53,6 +53,12 @@ const WarehouseList = () => {
   const [workbook, setWorkbook] = useState(null);
   const [isImportLoading, setIsImportLoading] = useState(false);
 
+  // IMPORT PROGRESS STATE
+  const [importProgress, setImportProgress] = useState(0);
+  const [importStatus, setImportStatus] = useState("");
+  const [importFileInfo, setImportFileInfo] = useState({ name: "", size: 0 });
+  const [importLoadedSize, setImportLoadedSize] = useState(0);
+
   const [filterOptions, setFilterOptions] = useState({
     districts: [],
     branches: [],
@@ -299,6 +305,9 @@ const WarehouseList = () => {
 
   const uniqueTypes = [...new Set(filteredTypes)];
 
+  const uniqueBranches = [...new Map(filteredBranches.map(b => [b.branch_name, b])).values()];
+  const uniqueWarehouses = [...new Map(filteredWarehouses.map(w => [w.warehouse_name, w])).values()];
+
   /* ===============================
      TABLE COLUMNS
   =============================== */
@@ -378,47 +387,118 @@ const WarehouseList = () => {
     const file = e.target.files[0];
     if (!file) return;
 
+    setImportFileInfo({
+      name: file.name,
+      size: (file.size / (1024 * 1024)).toFixed(2), // MB
+    });
+    setImportStatus("Reading file...");
+    setImportProgress(0);
+    setImportLoadedSize(0);
     setIsImportLoading(true);
     const reader = new FileReader();
 
-    reader.onload = (evt) => {
-      try {
-        const data = new Uint8Array(evt.target.result);
-        const wb = XLSX.read(data, { type: "array" });
-        setWorkbook(wb);
-        setAvailableSheets(wb.SheetNames);
-
-        const firstSheetName = wb.SheetNames[0];
-        setSelectedSheet(firstSheetName);
-
-        const sheet = wb.Sheets[firstSheetName];
-        const jsonData = XLSX.utils.sheet_to_json(sheet, { range: 1, raw: false });
-
-        setPreviewData(jsonData);
-        setShowPreview(true);
-      } catch (error) {
-        console.error("Import Error:", error);
-        toast.error("Failed to parse Excel file");
-      } finally {
-        setIsImportLoading(false);
-        if (fileInputRef.current) fileInputRef.current.value = "";
+    reader.onprogress = (evt) => {
+      if (evt.lengthComputable) {
+        const percent = Math.round((evt.loaded / evt.total) * 20); // First 20% for reading
+        setImportProgress(percent);
+        setImportLoadedSize((evt.loaded / (1024 * 1024)).toFixed(2));
       }
+    };
+
+    reader.onload = (evt) => {
+      setImportStatus("Parsing workbook...");
+      setImportProgress(25);
+      
+      setTimeout(async () => {
+        try {
+          const data = new Uint8Array(evt.target.result);
+          const wb = XLSX.read(data, { type: "array" });
+          setWorkbook(wb);
+          setAvailableSheets(wb.SheetNames);
+
+          const firstSheetName = wb.SheetNames[0];
+          setSelectedSheet(firstSheetName);
+          setImportProgress(30);
+
+          setTimeout(async () => {
+            await processWarehouseSheet(firstSheetName, wb);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+          }, 100);
+        } catch (error) {
+          console.error("Import Error:", error);
+          toast.error("Failed to parse Excel file");
+          setIsImportLoading(false);
+          setImportStatus("");
+        }
+      }, 100);
     };
 
     reader.onerror = () => {
       toast.error("Error reading file");
       setIsImportLoading(false);
+      setImportStatus("");
     };
 
     reader.readAsArrayBuffer(file);
   };
 
-  const handleSheetChange = (sheetName) => {
+  const processWarehouseSheet = async (sheetName, wb) => {
+    try {
+      setIsImportLoading(true);
+      setImportStatus("Optimizing sheet...");
+      setImportProgress(35);
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const sheet = wb.Sheets[sheetName];
+      const ref = XLSX.utils.decode_range(sheet['!ref'] || "A1:A1");
+      let lastRow = ref.s.r;
+      for (let r = ref.e.r; r >= ref.s.r; r--) {
+        for (let c = ref.e.c; c >= ref.s.c; c--) {
+          if (sheet[XLSX.utils.encode_cell({r, c})]) {
+            if (r > lastRow) lastRow = r;
+            break;
+          }
+        }
+        if (lastRow > ref.s.r && r < lastRow - 100) break;
+      }
+      sheet['!ref'] = XLSX.utils.encode_range({ s: ref.s, e: { r: lastRow, c: ref.e.c } });
+
+      const jsonDataRaw = XLSX.utils.sheet_to_json(sheet, { range: 1, raw: false });
+      const jsonData = jsonDataRaw.filter(row => Object.values(row).filter(v => v !== "").length > 5);
+
+      setImportProgress(50);
+      setImportStatus(`Processing ${jsonData.length} records...`);
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      setImportProgress(75);
+      setImportStatus("Mapping fields...");
+      
+      const transformedData = [];
+      const CHUNK_SIZE = 500;
+      for (let i = 0; i < jsonData.length; i += CHUNK_SIZE) {
+        const chunk = jsonData.slice(i, i + CHUNK_SIZE);
+        transformedData.push(...chunk.map(transformRow));
+        setImportProgress(75 + Math.round((i / jsonData.length) * 20));
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      setPreviewData(jsonData); 
+      setImportProgress(100);
+      setShowPreview(true);
+      setIsImportLoading(false);
+      setImportStatus("");
+    } catch (err) {
+      console.error("Sheet processing failed", err);
+      toast.error("Sheet processing failed");
+      setIsImportLoading(false);
+      setImportStatus("");
+    }
+  };
+
+  const handleSheetChange = async (sheetName) => {
     if (!workbook) return;
     setSelectedSheet(sheetName);
-    const sheet = workbook.Sheets[sheetName];
-    const jsonData = XLSX.utils.sheet_to_json(sheet, { range: 1, raw: false });
-    setPreviewData(jsonData);
+    await processWarehouseSheet(sheetName, workbook);
     setPreviewPage(1); // Reset to first page
   };
 
@@ -479,17 +559,35 @@ const WarehouseList = () => {
 
   const handleBulkInsert = async () => {
     setIsImportLoading(true);
+    setImportStatus("Uploading to server...");
+    setImportProgress(0);
     try {
+      setImportProgress(10);
+      setImportStatus("Transforming data...");
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       const transformedData = previewData.map(transformRow);
 
       // Reverse order so first row of sheet appears first in newest-first sorted list
       transformedData.reverse();
 
+      setImportProgress(30);
+      setImportStatus("Starting upload...");
+
       await axios.post("/warehouses/bulk-insert", {
         data: transformedData,
         default_crop_year: selectedSheet,
+      }, {
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setImportProgress(percentCompleted);
+            setImportLoadedSize((progressEvent.loaded / (1024 * 1024)).toFixed(2));
+          }
+        }
       });
 
+      setImportProgress(100);
       toast.success("Warehouses imported successfully!");
 
       setShowPreview(false);
@@ -506,6 +604,8 @@ const WarehouseList = () => {
       toast.error("Import failed!");
     } finally {
       setIsImportLoading(false);
+      setImportStatus("");
+      setImportProgress(0);
     }
   };
 
@@ -527,21 +627,84 @@ const WarehouseList = () => {
 
   return (
     <div className="space-y-6 relative">
-      {/* Global Loader for Import */}
+      {/* WINDOWS-STYLE LOADER OVERLAY */}
       {isImportLoading && (
-        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm">
-          <div className="bg-white p-8 rounded-2xl shadow-2xl border border-slate-100 flex flex-col items-center gap-4">
-            <div className="relative">
-              <div className="w-16 h-16 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Import className="text-blue-600 animate-pulse" size={24} />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[9999] flex items-center justify-center p-4 overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-300">
+            {/* Header */}
+            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                  <Import size={20} />
+                </div>
+                <h3 className="font-bold text-slate-800">Importing Warehouses</h3>
               </div>
+              <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full uppercase tracking-wider">
+                {importStatus.split(' ')[0]}
+              </span>
             </div>
-            <div className="text-center">
-              <h3 className="text-lg font-bold text-slate-800">Processing Excel Data</h3>
-              <p className="text-sm text-slate-500">Please wait while we extract and map your data...</p>
+
+            {/* Body */}
+            <div className="p-6 space-y-6">
+              {/* File Info */}
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-slate-500 flex justify-between">
+                  <span>File Name:</span>
+                  <span className="text-slate-800 truncate max-w-[200px]">{importFileInfo.name}</span>
+                </p>
+                {selectedSheet && (
+                  <p className="text-sm font-medium text-slate-500 flex justify-between">
+                    <span>Sheet Name:</span>
+                    <span className="text-blue-600 font-bold truncate max-w-[200px]">{selectedSheet}</span>
+                  </p>
+                )}
+                <p className="text-sm font-medium text-slate-500 flex justify-between">
+                  <span>Total Size:</span>
+                  <span className="text-slate-800">{importFileInfo.size} MB</span>
+                </p>
+              </div>
+
+              {/* Progress Section */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-end">
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-slate-700">{importStatus}</p>
+                    <p className="text-xs text-slate-500">
+                      {importStatus.includes("Uploading") 
+                        ? `${importLoadedSize} MB of ${importFileInfo.size} MB`
+                        : "Preparing data..."}
+                    </p>
+                  </div>
+                  <span className="text-2xl font-black text-blue-600 leading-none">
+                    {importProgress}%
+                  </span>
+                </div>
+
+                {/* Progress Bar Container */}
+                <div className="h-4 w-full bg-slate-200 rounded-full overflow-hidden border border-slate-300 shadow-inner">
+                  <div 
+                    className="h-full bg-blue-600 transition-all duration-500 ease-out relative"
+                    style={{ width: `${importProgress}%` }}
+                  >
+                    {/* Animated shine effect */}
+                    <div className="absolute inset-0 w-full h-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Note */}
+              <p className="text-[11px] text-center text-slate-400 italic">
+                Please do not close this window or refresh the page until the process is complete.
+              </p>
             </div>
           </div>
+
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes shimmer {
+              0% { transform: translateX(-100%); }
+              100% { transform: translateX(100%); }
+            }
+          `}} />
         </div>
       )}
 
@@ -579,7 +742,7 @@ const WarehouseList = () => {
       </div>
 
       {showPreview && previewData.length > 0 && (
-        <Card className="p-6 max-w-[1217px] overflow-x-auto overflow-y-hidden whitespace-nowrap w-full border-blue-100 shadow-md">
+        <Card className="p-6 overflow-x-auto overflow-y-hidden whitespace-nowrap w-full border-blue-100 shadow-md">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold flex items-center gap-2">
               <span className="w-1.5 h-6 bg-blue-600 rounded-full"></span>
