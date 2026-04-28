@@ -574,7 +574,7 @@ const WarehouseList = () => {
       setImportProgress(30);
       setImportStatus("Starting upload...");
 
-      await axios.post("/warehouses/bulk-insert", {
+      const response = await axios.post("/warehouses/bulk-insert", {
         data: transformedData,
         default_crop_year: selectedSheet,
       }, {
@@ -588,7 +588,7 @@ const WarehouseList = () => {
       });
 
       setImportProgress(100);
-      toast.success("Warehouses imported successfully!");
+      toast.success(response.data.message || "Warehouses imported successfully!");
 
       setShowPreview(false);
       setPreviewData([]);
