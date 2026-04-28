@@ -227,20 +227,17 @@ const AddPayment = () => {
 
   useEffect(() => {
     const billAmount = Number(formData.bill_amount || 0);
+    const totalJVAmount = Number(formData.total_jv_amount || 0);
 
-    const calculatedTDS = billAmount * 0.1;
-
+    const calculatedTDS = totalJVAmount * 0.1;
     const finalTDS = isTdsEdited
-      ? Number(formData.tds || 0) // user value
-      : calculatedTDS; // auto value
+      ? Number(formData.tds || 0)
+      : calculatedTDS;
 
-    const calculated20 = billAmount * 0.2;
-
+    const calculated20 = totalJVAmount * 0.2;
     const final20 = isDeduction20Edited
       ? Number(formData.deduction_20_percent || 0)
       : calculated20;
-
-    const totalJVAmount = Number(formData.total_jv_amount || 0);
 
     const totalDeductions =
       finalTDS +
@@ -252,14 +249,19 @@ const AddPayment = () => {
       Number(formData.emi_fdr_interest || 0) +
       Number(formData.gain_shortage_deduction || 0) +
       Number(formData.stock_shortage_deduction || 0) +
-      Number(formData.bank_solvancy || 0) +
+      (formData.bank_solvancy === "Certificate"
+        ? 0
+        : Number(formData.bank_solvancy || 0)) +
       Number(formData.insurance || 0) +
       Number(formData.other_deduction_amount || 0);
 
-    const payToJVS = billAmount - totalDeductions;
+    const payToJVS = totalJVAmount - totalDeductions;
 
-    if (payToJVS < 0) {
-      toast.error("⚠️ Deductions exceed the bill amount! Pay To JVS Amount is going negative. Please review your deductions.", { id: "negative-jvs" });
+    if (payToJVS < 0 && currentStep === 2) {
+      toast.error(
+        "⚠️ Pay To JVS Amount is going in the negative! Please review all deduction fields.",
+        { id: "negative-jvs" },
+      );
     }
 
     setFormData((prev) => ({
@@ -368,15 +370,22 @@ const AddPayment = () => {
 
       // ✅ BANK SOLVANCY LOGIC
       if (cropData) {
-        if (cropData.is_affidavit === false) {
-          setFormData(prev => ({
+        const isCert =
+          cropData.is_affidavit === 0 ||
+          cropData.is_affidavit === "0" ||
+          cropData.is_affidavit === false ||
+          cropData.is_affidavit === "false";
+
+        if (isCert) {
+          setFormData((prev) => ({
             ...prev,
-            bank_solvancy: "Certificate"
+            bank_solvancy: "Certificate",
           }));
         } else {
-          setFormData(prev => ({
+          setFormData((prev) => ({
             ...prev,
-            bank_solvancy: prev.bank_solvancy === "Certificate" ? 0 : prev.bank_solvancy
+            bank_solvancy:
+              prev.bank_solvancy === "Certificate" ? 0 : prev.bank_solvancy,
           }));
         }
       }
@@ -521,7 +530,10 @@ const AddPayment = () => {
         stock_shortage_deduction: Number(
           formData.stock_shortage_deduction || 0,
         ),
-        bank_solvancy: Number(formData.bank_solvancy || 0),
+        bank_solvancy:
+          formData.bank_solvancy === "Certificate"
+            ? 0
+            : Number(formData.bank_solvancy || 0),
         insurance: Number(formData.insurance || 0),
         other_deduction_amount: Number(formData.other_deduction_amount || 0),
 

@@ -47,17 +47,6 @@ const EditWarehouse = () => {
     warehouse_no: "",
     gst_no: "",
 
-    scheme: "",
-    scheme_rate_amount: "",
-    actual_storage_capacity: "",
-    approved_storage_capacity: "",
-
-    bank_solvency_certificate_amount: "",
-    bank_solvency_deduction_by_bill: "",
-    emi_deduction_by_bill: "",
-
-    is_affidavit: true,
-
     pan_card_holder: "",
     pan_card_number: "",
   });
@@ -93,18 +82,18 @@ const EditWarehouse = () => {
         backendCropData.map((item) => ({
           crop_year: item.crop_year || "",
           scheme: item.scheme || "",
-          scheme_rate_amount: item.scheme_rate_amount ?? 0,
-          actual_storage_capacity: item.actual_storage_capacity ?? 0,
-          approved_storage_capacity: item.approved_storage_capacity ?? 0,
+          scheme_rate_amount: item.scheme_rate_amount,
+          actual_storage_capacity: item.actual_storage_capacity,
+          approved_storage_capacity: item.approved_storage_capacity,
           is_affidavit: item.is_affidavit,
           bank_solvency_certificate_amount:
-            item.bank_solvency_certificate_amount ?? 0,
-          bank_solvency_deduction_by_bill:
-            item.bank_solvency_deduction_by_bill ?? 0,
-          emi_deduction_by_bill: item.emi_deduction_by_bill ?? 0,
-          total_emi: item.total_emi || "",
-          balance_amount_emi: item.balance_amount_emi ?? 0,
-          bank_solvency_balance_amount: item.bank_solvency_balance_amount ?? 0,
+            item.bank_solvency_certificate_amount,
+          bank_solvency_affidavit_amount: item.bank_solvency_affidavit_amount,
+          bank_solvency_deduction_by_bill: item.bank_solvency_deduction_by_bill,
+          emi_deduction_by_bill: item.emi_deduction_by_bill,
+          total_emi: item.total_emi,
+          balance_amount_emi: item.balance_amount_emi,
+          bank_solvency_balance_amount: item.bank_solvency_balance_amount,
         })),
       );
     }
@@ -113,11 +102,46 @@ const EditWarehouse = () => {
   const handleCropChange = (index, field, value) => {
     const updated = [...cropData];
 
-    updated[index][field] = field === "is_affidavit" ? value === "true" : value;
+    updated[index][field] =
+      field === "is_affidavit"
+        ? value === "true" || value === "1"
+          ? 1
+          : 0
+        : value;
 
-    if (field === "is_affidavit" && value === "false") {
-      updated[index].bank_solvency_deduction_by_bill = 0;
-      updated[index].bank_solvency_balance_amount = 0;
+    /* ✅ Reset dependent fields when source fields change to trigger re-calculation */
+    if (field === "actual_storage_capacity" || field === "scheme_rate_amount") {
+      updated[index].total_emi = null;
+      updated[index].balance_amount_emi = null;
+    }
+
+    if (field === "approved_storage_capacity") {
+      updated[index].bank_solvency_affidavit_amount = null;
+      updated[index].bank_solvency_balance_amount = null;
+    }
+
+    if (field === "total_emi" || field === "emi_deduction_by_bill") {
+      updated[index].balance_amount_emi = null;
+    }
+
+    if (
+      field === "bank_solvency_affidavit_amount" ||
+      field === "bank_solvency_certificate_amount" ||
+      field === "bank_solvency_deduction_by_bill"
+    ) {
+      updated[index].bank_solvency_balance_amount = null;
+    }
+
+    /* ✅ Handle Affidavit/Certificate switch - Simple solution: clear inactive amount */
+    if (field === "is_affidavit") {
+      const isAff = Number(updated[index].is_affidavit) === 1;
+      if (isAff) {
+        updated[index].bank_solvency_certificate_amount = 0;
+      } else {
+        updated[index].bank_solvency_affidavit_amount = 0;
+        updated[index].bank_solvency_deduction_by_bill = 0;
+        updated[index].bank_solvency_balance_amount = 0;
+      }
     }
 
     setCropData(updated);
@@ -137,6 +161,8 @@ const EditWarehouse = () => {
     e.preventDefault();
 
     const preparedCropData = cropData.map((item) => {
+      const affidavitAmount = (item.approved_storage_capacity * 50) || 0;
+
       const totalEMI =
         item.total_emi !== null &&
         item.total_emi !== undefined &&
@@ -146,10 +172,39 @@ const EditWarehouse = () => {
 
       const emiBalance = totalEMI - (item.emi_deduction_by_bill || 0);
 
+      const actualAffidavitAmount =
+        item.bank_solvency_affidavit_amount !== undefined &&
+        item.bank_solvency_affidavit_amount !== null &&
+        item.bank_solvency_affidavit_amount !== ""
+          ? Number(item.bank_solvency_affidavit_amount)
+          : affidavitAmount;
+
+      const isAff = Number(item.is_affidavit) === 1;
+
+      const solvencyBase = isAff
+        ? actualAffidavitAmount
+        : Number(item.bank_solvency_certificate_amount || 0);
+
+      const solvencyBalance =
+        item.bank_solvency_balance_amount !== undefined &&
+        item.bank_solvency_balance_amount !== null &&
+        item.bank_solvency_balance_amount !== ""
+          ? Number(item.bank_solvency_balance_amount)
+          : solvencyBase - (item.bank_solvency_deduction_by_bill || 0);
+
+      const finalAffidavitAmount = isAff ? actualAffidavitAmount : 0;
+      const finalCertificateAmount = !isAff
+        ? Number(item.bank_solvency_certificate_amount || 0)
+        : 0;
+
       return {
         ...item,
-        total_emi: totalEMI,
-        balance_amount_emi: emiBalance,
+        is_affidavit: isAff ? 1 : 0,
+        bank_solvency_affidavit_amount: Number(finalAffidavitAmount || 0),
+        bank_solvency_certificate_amount: Number(finalCertificateAmount || 0),
+        bank_solvency_balance_amount: Number(solvencyBalance || 0),
+        total_emi: Number(totalEMI || 0),
+        balance_amount_emi: Number(emiBalance || 0),
       };
     });
 
@@ -257,20 +312,22 @@ const EditWarehouse = () => {
           {cropData.map((item, index) => {
             const affidavitAmount = item.approved_storage_capacity * 50 || 0;
 
+            const isAff = Number(item.is_affidavit) === 1;
+            const isCertificate = !isAff;
+
             const totalEMI =
               (item.actual_storage_capacity * item.scheme_rate_amount) / 2 || 0;
 
-            const solvencyBase = item.is_affidavit
+            const solvencyBase = isAff
               ? affidavitAmount
               : item.bank_solvency_certificate_amount || 0;
 
-            const solvencyBalance =
-              item.bank_solvency_balance_amount ??
-              solvencyBase - (item.bank_solvency_deduction_by_bill || 0);
+            const solvencyBalance = isCertificate
+              ? 0
+              : solvencyBase - (item.bank_solvency_deduction_by_bill || 0);
 
             const emiBalance =
-              item.balance_amount_emi ??
-              totalEMI - (item.emi_deduction_by_bill || 0);
+              (item.total_emi ?? totalEMI) - (item.emi_deduction_by_bill || 0);
             return (
               <div key={index} className="border rounded-lg overflow-hidden">
                 {/* ✅ HEADER */}
@@ -397,7 +454,7 @@ const EditWarehouse = () => {
                       <Grid>
                         <FormField label="Affidavit/Certificate">
                           <select
-                            value={item.is_affidavit}
+                            value={String(item.is_affidavit)}
                             onChange={(e) =>
                               handleCropChange(
                                 index,
@@ -407,8 +464,8 @@ const EditWarehouse = () => {
                             }
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                           >
-                            <option value="true">Affidavit</option>
-                            <option value="false">Certificate</option>
+                            <option value="1">Affidavit</option>
+                            <option value="0">Certificate</option>
                           </select>
                         </FormField>
 

@@ -160,7 +160,13 @@ const EditPayment = () => {
 
       // ✅ BANK SOLVANCY LOGIC
       if (cropData) {
-        if (cropData.is_affidavit === false) {
+        const isCert =
+          cropData.is_affidavit === 0 ||
+          cropData.is_affidavit === "0" ||
+          cropData.is_affidavit === false ||
+          cropData.is_affidavit === "false";
+
+        if (isCert) {
           setFormData((prev) => ({
             ...prev,
             bank_solvancy: "Certificate",
@@ -186,17 +192,20 @@ const EditPayment = () => {
 
   useEffect(() => {
     const billAmount = Number(formData.bill_amount || 0);
-    const tdsValue = Number(formData.tds || 0);
+    const totalJVAmount = Number(formData.total_jv_amount || 0);
 
-    const calculated20 = billAmount * 0.2;
+    const calculatedTDS = totalJVAmount * 0.1;
+    const finalTDS = isTdsManual
+      ? Number(formData.tds || 0)
+      : calculatedTDS;
+
+    const calculated20 = totalJVAmount * 0.2;
     const final20 = isDeduction20Edited
       ? Number(formData.deduction_20_percent || 0)
       : calculated20;
 
-    const totalJVAmount = Number(formData.total_jv_amount || 0);
-
     const totalDeductions =
-      tdsValue +
+      finalTDS +
       Number(formData.amount_deducted_against_gain_loss || 0) +
       Number(formData.emi_amount || 0) +
       final20 +
@@ -205,14 +214,24 @@ const EditPayment = () => {
       Number(formData.emi_fdr_interest || 0) +
       Number(formData.gain_shortage_deduction || 0) +
       Number(formData.stock_shortage_deduction || 0) +
-      Number(formData.bank_solvancy || 0) +
+      (formData.bank_solvancy === "Certificate"
+        ? 0
+        : Number(formData.bank_solvancy || 0)) +
       Number(formData.insurance || 0) +
       Number(formData.other_deduction_amount || 0);
 
-    const payToJVS = billAmount - totalDeductions;
+    const payToJVS = totalJVAmount - totalDeductions;
+
+    if (payToJVS < 0 && currentStep === 2) {
+      toast.error(
+        "⚠️ Pay To JVS Amount is going in the negative! Please review all deduction fields.",
+        { id: "negative-jvs" },
+      );
+    }
 
     setFormData((prev) => ({
       ...prev,
+      tds: isTdsManual ? prev.tds : calculatedTDS.toFixed(2),
       deduction_20_percent: isDeduction20Edited
         ? prev.deduction_20_percent
         : calculated20.toFixed(2),
@@ -327,7 +346,10 @@ const EditPayment = () => {
         stock_shortage_deduction: Number(
           formData.stock_shortage_deduction || 0,
         ),
-        bank_solvancy: Number(formData.bank_solvancy || 0),
+        bank_solvancy:
+          formData.bank_solvancy === "Certificate"
+            ? 0
+            : Number(formData.bank_solvancy || 0),
         insurance: Number(formData.insurance || 0),
         other_deduction_amount: Number(formData.other_deduction_amount || 0),
 
