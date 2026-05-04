@@ -580,14 +580,20 @@ const WarehouseList = () => {
       }, {
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            // Cap upload progress at 90% so it doesn't look stuck at 100% while backend processes
+            const percentCompleted = Math.min(Math.round((progressEvent.loaded * 100) / progressEvent.total), 90);
             setImportProgress(percentCompleted);
             setImportLoadedSize((progressEvent.loaded / (1024 * 1024)).toFixed(2));
+            
+            if (percentCompleted >= 90) {
+              setImportStatus("Processing on server...");
+            }
           }
         }
       });
 
       setImportProgress(100);
+      setImportStatus("Import complete!");
       toast.success(response.data.message || "Warehouses imported successfully!");
 
       setShowPreview(false);
