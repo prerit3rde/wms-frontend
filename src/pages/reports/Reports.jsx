@@ -5,6 +5,8 @@ import axios from "../../services/axios";
 import toast from "react-hot-toast";
 import { Download, Trash2 } from "lucide-react";
 
+import Pagination from "../../components/global/Pagination";
+
 const reportTypes = [
   { label: "Bank Solvancy Reports", value: "BANK_SOLVANCY" },
   { label: "TDS Reports", value: "TDS" },
@@ -27,6 +29,10 @@ export default function Reports() {
   const [billTypes, setBillTypes] = useState([]);
   const [warehouseType, setWarehouseType] = useState("");
   const [warehouseTypes, setWarehouseTypes] = useState([]);
+  const [months, setMonths] = useState([
+    "January", "February", "March", "April", "May", "June", 
+    "July", "August", "September", "October", "November", "December"
+  ]);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
@@ -39,18 +45,29 @@ export default function Reports() {
   const [previewPage, setPreviewPage] = useState(1);
   const previewTotalPages = Math.ceil(previewData.length / previewLimit);
 
-  const fetchCropYears = async () => {
-    const res = await axios.get("/warehouses");
-    const years = res.data.data.flatMap(
-      (w) => w.cropData?.map((c) => c.crop_year) || [],
-    );
-    setCropYears([...new Set(years)]);
-  };
-
   useEffect(() => {
-    fetchFilterData();
     fetchReports();
   }, []);
+
+  useEffect(() => {
+    if (reportType) {
+      fetchCascadingFilters();
+      handlePreview();
+    } else {
+      setPreviewData([]);
+      setNoDataMessage("");
+      // reset specific options if needed, but keeping them empty is fine
+      setFinancialYears([]);
+      setMonths([
+        "January", "February", "March", "April", "May", "June", 
+        "July", "August", "September", "October", "November", "December"
+      ]);
+      setCropYears([]);
+      setWarehouseNames([]);
+      setBillTypes([]);
+      setWarehouseTypes([]);
+    }
+  }, [reportType, financialYear, month, cropYear, warehouseName, billType, warehouseType, fromDate, toDate]);
 
   const getReportLabel = (value) => {
     const found = reportTypes.find((r) => r.value === value);
@@ -58,22 +75,37 @@ export default function Reports() {
   };
 
   /* ================= FETCH FILTER DATA ================= */
-  const fetchFilterData = async () => {
+  const fetchCascadingFilters = async () => {
     try {
-      const res = await axios.get("/reports/financial-years");
-      setFinancialYears(res.data.data.financialYears || []);
-      setCropYears(res.data.data.cropYears || []);
-
-      // Fetch warehouse/bill type filter options from payments
-      const filterRes = await axios.get("/payments/filters");
-      const filters = filterRes.data.data || {};
-      setWarehouseNames(filters.warehouseNames?.map(w => w.warehouse_name).filter(Boolean) || []);
-      setBillTypes(filters.billTypes || []);
-      setWarehouseTypes(filters.warehouseTypes?.map(t => t.warehouse_type).filter(Boolean) || []);
+      setLoading(true);
+      const res = await axios.get("/reports/filters", {
+        params: { reportType, financialYear, month, cropYear, warehouseName, billType, warehouseType }
+      });
+      const data = res.data.data || {};
+      setFinancialYears(data.financialYears || []);
+      setMonths(data.months?.length ? data.months : [
+        "January", "February", "March", "April", "May", "June", 
+        "July", "August", "September", "October", "November", "December"
+      ]);
+      setCropYears(data.cropYears || []);
+      setWarehouseNames(data.warehouseNames?.filter(Boolean) || []);
+      setBillTypes(data.billTypes?.filter(Boolean) || []);
+      setWarehouseTypes(data.warehouseTypes?.filter(Boolean) || []);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch filters", err);
+    } finally {
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (reportType) {
+      handlePreview();
+    } else {
+      setPreviewData([]);
+      setNoDataMessage("");
+    }
+  }, [reportType, financialYear, month, cropYear, warehouseName, billType, warehouseType, fromDate, toDate]);
 
   /* ================= FETCH SAVED REPORTS ================= */
   const fetchReports = async () => {
@@ -183,6 +215,20 @@ export default function Reports() {
     }
   };
 
+  const handleClearFilters = () => {
+    setReportType("");
+    setFinancialYear("");
+    setMonth("");
+    setCropYear("");
+    setWarehouseName("");
+    setBillType("");
+    setWarehouseType("");
+    setFromDate("");
+    setToDate("");
+    setPreviewData([]);
+    setNoDataMessage("");
+  };
+
   // useEffect(() => {
   //   fetchFinancialYears();
   //   fetchReports();
@@ -193,8 +239,8 @@ export default function Reports() {
   const previewColumns = [
     {
       label: "Sr No",
-      key: "id",
-      render: (value, row) => {
+      key: "sr_no",
+      render: (value, row, index) => {
         if (row.isNoData) {
           return (
             <div className="text-red-500 font-medium w-[1200px]">
@@ -202,7 +248,7 @@ export default function Reports() {
             </div>
           );
         }
-        return value;
+        return (previewPage - 1) * previewLimit + index + 1;
       },
     },
     {
@@ -221,27 +267,27 @@ export default function Reports() {
       render: (v, r) => (r.isNoData ? null : v),
     },
     {
-      label: "Warehouse",
+      label: "Name of Warehouse",
       key: "warehouse_name",
       render: (v, r) => (r.isNoData ? null : v),
     },
     {
-      label: "Warehouse No",
-      key: "warehouse_no",
-      render: (v, r) => (r.isNoData ? null : v),
-    },
-    {
-      label: "PAN Holder",
+      label: "PAN Card Holder",
       key: "pan_card_holder",
       render: (v, r) => (r.isNoData ? null : v),
     },
     {
-      label: "PAN Number",
+      label: "PAN Card Number",
       key: "pan_card_number",
       render: (v, r) => (r.isNoData ? null : v),
     },
     {
-      label: "Depositer",
+      label: "Gdn No.",
+      key: "warehouse_no",
+      render: (v, r) => (r.isNoData ? null : v),
+    },
+    {
+      label: "Depositer Name",
       key: "depositers_name",
       render: (v, r) => (r.isNoData ? null : v),
     },
@@ -256,16 +302,19 @@ export default function Reports() {
       render: (v, r) => (r.isNoData ? null : v),
     },
     {
-      label: "Period",
-      key: "period",
-      render: (_, row) => {
-        if (row.isNoData) return null;
-        if (!row.from_date) return "";
-        const d = new Date(row.from_date);
-        return d.toLocaleString("en-IN", {
-          month: "short",
-          year: "2-digit",
-        });
+      label: "Financial Year",
+      key: "financial_year",
+      render: (v, r) => (r.isNoData ? null : v || ""),
+    },
+    {
+      label: "Month",
+      key: "month",
+      render: (v, r) => {
+        if (r.isNoData) return null;
+        if (v) return v;
+        if (!r.from_date) return "";
+        const d = new Date(r.from_date);
+        return d.toLocaleString("en-IN", { month: "long" });
       },
     },
     {
@@ -274,18 +323,23 @@ export default function Reports() {
       render: (v, r) => (r.isNoData ? null : v),
     },
     {
-      label: "Actual Passed",
+      label: "TOTAL JV Amount",
+      key: "total_jv_amount",
+      render: (v, r) => (r.isNoData ? null : v),
+    },
+    {
+      label: "Actual Passed Amount",
       key: "actual_passed_amount",
       render: (v, r) => (r.isNoData ? null : v),
     },
     { label: "TDS", key: "tds", render: (v, r) => (r.isNoData ? null : v) },
     {
-      label: "EMI",
+      label: "EMI Amount",
       key: "emi_amount",
       render: (v, r) => (r.isNoData ? null : v),
     },
     {
-      label: "20% Deduction",
+      label: "20% Deduction Amount against 1% gain",
       key: "deduction_20_percent",
       render: (v, r) => (r.isNoData ? null : v),
     },
@@ -305,12 +359,12 @@ export default function Reports() {
       render: (v, r) => (r.isNoData ? null : v),
     },
     {
-      label: "Gain Shortage",
+      label: "Gain Shortage Deduction",
       key: "gain_shortage_deduction",
       render: (v, r) => (r.isNoData ? null : v),
     },
     {
-      label: "Stock Shortage",
+      label: "Stock Shortage Deduction",
       key: "stock_shortage_deduction",
       render: (v, r) => (r.isNoData ? null : v),
     },
@@ -335,7 +389,7 @@ export default function Reports() {
       render: (v, r) => (r.isNoData ? null : v),
     },
     {
-      label: "Pay to JVS",
+      label: "Pay to JVS Amount",
       key: "pay_to_jvs_amount",
       render: (v, r) => (r.isNoData ? null : v),
     },
@@ -518,20 +572,7 @@ export default function Reports() {
               onChange={(e) => setMonth(e.target.value)}
             >
               <option value="">Select</option>
-              {[
-                "January",
-                "February",
-                "March",
-                "April",
-                "May",
-                "June",
-                "July",
-                "August",
-                "September",
-                "October",
-                "November",
-                "December",
-              ].map((m) => (
+              {months.map((m) => (
                 <option key={m} value={m}>
                   {m}
                 </option>
@@ -609,7 +650,7 @@ export default function Reports() {
               <FormField label="From Date">
                 <input
                   type="date"
-                  className="border rounded-lg px-3 py-2 cursor-pointer"
+                  className="border rounded-lg px-3 py-2"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
                 />
@@ -619,7 +660,7 @@ export default function Reports() {
               <FormField label="To Date">
                 <input
                   type="date"
-                  className="border rounded-lg px-3 py-2 cursor-pointer"
+                  className="border rounded-lg px-3 py-2"
                   value={toDate}
                   onChange={(e) => setToDate(e.target.value)}
                 />
@@ -628,10 +669,14 @@ export default function Reports() {
           </>
         )}
 
-        {/* Preview Button */}
-        <Button onClick={handlePreview} disabled={loading}>
-          Generate Report
-        </Button>
+        <div className="flex gap-4 w-full mt-4 items-end">
+          <Button 
+            variant="secondary" 
+            onClick={handleClearFilters}
+          >
+            Clear All Filters
+          </Button>
+        </div>
       </div>
 
       {/* ================= PREVIEW TABLE ================= */}
@@ -657,8 +702,14 @@ export default function Reports() {
             <div className="text-red-500 font-medium">{noDataMessage}</div>
           )}
 
+          {loading && (
+            <div className="flex justify-center py-10">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+            </div>
+          )}
+
           {/* ✅ SHOW TABLE */}
-          {previewData.length > 0 && (
+          {!loading && previewData.length > 0 && (
             <>
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
@@ -713,79 +764,15 @@ export default function Reports() {
                 </table>
               </div>
 
-              {/* Pagination */}
               {previewTotalPages > 1 && (
-                <div className="mt-4 flex flex-col md:flex-row items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200 gap-4">
-                  <span className="text-sm font-semibold text-slate-700">
-                    Showing {(previewPage - 1) * previewLimit + 1} to{" "}
-                    {Math.min(previewPage * previewLimit, previewData.length)} of{" "}
-                    <span className="text-blue-600">{previewData.length}</span> records
-                  </span>
-
-                  <div className="flex items-center gap-1 overflow-x-auto max-w-full pb-1">
-                    <button
-                      disabled={previewPage === 1}
-                      onClick={() => setPreviewPage(1)}
-                      className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
-                    >
-                      First
-                    </button>
-                    <button
-                      disabled={previewPage === 1}
-                      onClick={() => setPreviewPage((p) => p - 1)}
-                      className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30 mr-2"
-                    >
-                      Prev
-                    </button>
-
-                    {[...Array(previewTotalPages)].map((_, i) => {
-                      const p = i + 1;
-                      if (p === 1 || p === previewTotalPages || (p >= previewPage - 2 && p <= previewPage + 2)) {
-                        return (
-                          <button
-                            key={p}
-                            onClick={() => setPreviewPage(p)}
-                            className={`min-w-[32px] px-2 py-1 text-xs border rounded transition ${
-                              previewPage === p
-                                ? "bg-blue-600 text-white border-blue-600"
-                                : "bg-white text-slate-600 hover:bg-slate-100 border-slate-300"
-                            }`}
-                          >
-                            {p}
-                          </button>
-                        );
-                      }
-                      if (p === 2 && previewPage > 4) return <span key="dots1" className="px-1 text-slate-400">...</span>;
-                      if (p === previewTotalPages - 1 && previewPage < previewTotalPages - 3) return <span key="dots2" className="px-1 text-slate-400">...</span>;
-                      return null;
-                    })}
-
-                    <button
-                      disabled={previewPage === previewTotalPages}
-                      onClick={() => setPreviewPage((p) => p + 1)}
-                      className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30 ml-2"
-                    >
-                      Next
-                    </button>
-                    <button
-                      disabled={previewPage === previewTotalPages}
-                      onClick={() => setPreviewPage(previewTotalPages)}
-                      className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
-                    >
-                      Last
-                    </button>
-                  </div>
-                </div>
+                <Pagination
+                  currentPage={previewPage}
+                  totalPages={previewTotalPages}
+                  totalRecords={previewData.length}
+                  limit={previewLimit}
+                  onPageChange={setPreviewPage}
+                />
               )}
-
-              <Button
-                variant="success"
-                onClick={handleGenerate}
-                disabled={loading}
-                className="mt-5"
-              >
-                Generate & Save
-              </Button>
             </>
           )}
         </div>

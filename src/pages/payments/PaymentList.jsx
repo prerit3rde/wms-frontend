@@ -20,7 +20,7 @@ import kru2uni from "@anthro-ai/krutidev-unicode";
 
 const PaymentList = () => {
   const dispatch = useDispatch();
-  const { items, totalPages, page, limit, loading } = useSelector(
+  const { items, totalPages, page, limit, loading, total } = useSelector(
     (state) => state.payments,
   );
 
@@ -68,9 +68,9 @@ const PaymentList = () => {
     if (!value) return null;
 
     // ✅ Excel serial number
-    if (!isNaN(value)) {
+    if (typeof value === "number" || (!isNaN(value) && !isNaN(parseFloat(value)))) {
       const excelEpoch = new Date(1899, 11, 30);
-      const date = new Date(excelEpoch.getTime() + value * 86400000);
+      const date = new Date(excelEpoch.getTime() + Number(value) * 86400000);
       return formatToYMD(date);
     }
 
@@ -80,8 +80,20 @@ const PaymentList = () => {
     }
 
     if (typeof value === "string") {
-      const parsed = new Date(value);
+      // Try to detect common DD/MM/YYYY or MM/DD/YYYY
+      const parts = value.split(/[-/]/);
+      if (parts.length === 3) {
+        let [d, m, y] = parts;
+        // If year is 2 digits, assume 20xx
+        if (y.length === 2) y = "20" + y;
 
+        // Try creating date from parts (handling both DD/MM and MM/DD common cases)
+        // Defaulting to Indian style DD/MM/YYYY usually preferred in this context
+        const parsed = new Date(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`);
+        if (!isNaN(parsed)) return formatToYMD(parsed);
+      }
+
+      const parsed = new Date(value);
       if (!isNaN(parsed)) {
         return formatToYMD(parsed);
       }
@@ -367,7 +379,7 @@ const PaymentList = () => {
         "Gdn No.",
         "Depositers Name",
         "Commodity",
-        "Period",
+        "Month",
         "Financial Year", // ✅ NEW
         "Crop Year", // ✅ NEW
         "Rate", // ✅ NEW
@@ -393,47 +405,62 @@ const PaymentList = () => {
       ];
 
       /* ================= DATA ================= */
-      const data = allPayments.map((row, index) => [
-        row.id,
-        row.bill_type || "",
-        row.district_name || "",
-        index + 1,
-        row.branch_name || "",
-        row.warehouse_name || "",
-        row.warehouse_type || "",
-        row.pan_card_holder || "",
-        row.pan_card_number || "",
-        row.warehouse_no || "",
-        row.depositers_name || "",
-        row.commodity || "",
-        formatPeriod(row.from_date),
+      const data = allPayments.map((row, index) => {
+        const monthNames = [
+          "January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"
+        ];
 
-        row.financial_year || "", // ✅
-        row.crop_year || "", // ✅
-        row.rate || "",
+        let monthName = "";
+        if (row.from_date) {
+          const d = new Date(row.from_date);
+          monthName = monthNames[d.getMonth()];
+        } else if (row.month) {
+          monthName = row.month;
+        }
 
-        row.bill_amount || 0,
-        row.total_jv_amount || 0,
-        row.actual_passed_amount || 0,
-        row.tds || 0,
-        row.emi_amount || 0,
-        row.deduction_20_percent || 0,
-        row.penalty || 0,
-        row.medicine || 0,
-        row.emi_fdr_interest || 0,
-        row.gain_shortage_deduction || 0,
-        row.stock_shortage_deduction || 0,
-        row.bank_solvancy || 0,
-        row.insurance || 0,
-        row.other_deduction_amount || 0,
-        row.pay_to_jvs_amount || 0,
-        row.payment_by || "",
-        row.payment_date
-          ? new Date(row.payment_date).toLocaleDateString("en-IN")
-          : "",
-        row.qtr || "",
-        row.remarks || "",
-      ]);
+        return [
+          row.id,
+          row.bill_type || "",
+          row.district_name || "",
+          index + 1,
+          row.branch_name || "",
+          row.warehouse_name || "",
+          row.warehouse_type || "",
+          row.pan_card_holder || "",
+          row.pan_card_number || "",
+          row.warehouse_no || "",
+          row.depositers_name || "",
+          row.commodity || "",
+          monthName,
+
+          row.financial_year || "", // ✅
+          row.crop_year || "", // ✅
+          row.rate || "",
+
+          row.bill_amount || 0,
+          row.total_jv_amount || 0,
+          row.actual_passed_amount || 0,
+          row.tds || 0,
+          row.emi_amount || 0,
+          row.deduction_20_percent || 0,
+          row.penalty || 0,
+          row.medicine || 0,
+          row.emi_fdr_interest || 0,
+          row.gain_shortage_deduction || 0,
+          row.stock_shortage_deduction || 0,
+          row.bank_solvancy || 0,
+          row.insurance || 0,
+          row.other_deduction_amount || 0,
+          row.pay_to_jvs_amount || 0,
+          row.payment_by || "",
+          row.payment_date
+            ? new Date(row.payment_date).toLocaleDateString("en-IN")
+            : "",
+          row.qtr || "",
+          row.remarks || "",
+        ];
+      });
 
       /* ================= DEDUCTION ================= */
       const deductionRow = new Array(headers.length).fill("");
@@ -595,11 +622,12 @@ const PaymentList = () => {
     { key: "branch_name", label: "Branch" },
     { key: "warehouse_name", label: "Warehouse" },
     { key: "warehouse_type", label: "Warehouse Type" },
-    { key: "commodity", label: "Commodity" },
     { key: "depositers_name", label: "Depositer Name" },
-    { key: "month", label: "Month" },
-    { key: "financial_year", label: "Financial Year" },
+    { key: "commodity", label: "Commodity" },
     { key: "crop_year", label: "Crop Year" },
+    { key: "financial_year", label: "Financial Year" },
+    { key: "month", label: "Month" },
+    { key: "bill_amount", label: "Bill Amount" },
     { key: "remarks", label: "Remarks" },
     // {
     //   key: "status",
@@ -717,10 +745,10 @@ const PaymentList = () => {
     // ================= WAREHOUSE =================
     district_name: "District",
     branch_name: "Branch",
-    warehouse_name: "Warehouse Name",
+    warehouse_name: "Name of Warehouse",
     warehouse_owner_name: "Warehouse Owner",
     warehouse_type: "Warehouse Type",
-    warehouse_no: "Warehouse No",
+    warehouse_no: "Gdn No.",
     gst_no: "GST No",
     scheme: "Scheme",
     scheme_rate_amount: "Scheme Rate Amount",
@@ -748,6 +776,7 @@ const PaymentList = () => {
     rate: "Rate",
     rent_bill_amount: "Rent Bill Amount",
     bill_amount: "Bill Amount",
+    total_jv_amount: "TOTAL JV Amount",
     actual_passed_amount: "Actual Passed Amount",
     depositers_name: "Depositers Name",
 
@@ -757,6 +786,22 @@ const PaymentList = () => {
     rent_amount_on_scientific_capacity: "Rent Amount On Scientific Capacity",
 
     tds: "TDS",
+    emi_amount: "EMI Amount",
+    deduction_20_percent: "20% Deduction Amount against 1% gain",
+    penalty: "Penalty",
+    medicine: "Medicine",
+    emi_fdr_interest: "EMI FDR Interest",
+    gain_shortage_deduction: "Gain Shortage Deduction",
+    stock_shortage_deduction: "Stock Shortage Deduction",
+    bank_solvancy: "Bank Solvancy",
+    insurance: "Insurance",
+    other_deduction_amount: "Other Deduction",
+    other_deductions_reason: "Other Deduction Reason",
+    pay_to_jvs_amount: "Pay to JVS Amount",
+    payment_by: "Payment By",
+    payment_date: "Payment Date",
+    qtr: "QTR",
+    remarks: "Remarks",
     amount_deducted_against_gain_loss: "Amount Deducted Against Gain/Loss",
     emi_amount: "EMI Amount",
     deduction_20_percent: "20% Deduction",
@@ -779,68 +824,141 @@ const PaymentList = () => {
     remarks: "Remarks",
   };
 
-  const ENGLISH_WHITELIST = [
-    "INDORE", "DHAR", "KHANDWA", "KHARGONE", "JHABUA", "BURHANPUR", "BADWANI", "BARWANI", "DEWAS", "RATLAM", "UJJAIN", "BHOPAL", "GWALIOR", "JABALPUR",
-    "WAREHOUSE", "LOGISTICS", "PARK", "AGRO", "PVT", "LTD", "PART", "GODOWN", "DISTRICT", "BRANCH", "EMI", "PAN", "HOLDER", "BILL", "NO"
-  ];
-
-  const convertHindi = (text, fieldName = "") => {
-    if (text === null || text === undefined || text === "") return text;
-    if (typeof text === "number") return text;
-
-    const str = text.toString().trim();
-
-    // 1. STRICT COLUMN PROTECTION
-    // These fields are often English or protected in your sheets.
-    const PROTECTED_FIELDS = [
-      "district_name", "scheme", "pan_no", "pan_holder",
-      "total_amount", "amount_paid", "balance_amount",
-      "crop_year", "processed_period", "warehouse_no"
-    ];
-    if (PROTECTED_FIELDS.includes(fieldName)) return str;
-
-    // 2. Length-1 Protection (Protects A, B schemes and single digits)
-    if (str.length === 1) return str;
-
-    // 3. Numeric/Serial Date/ID check
-    if (!isNaN(str) && !isNaN(parseFloat(str))) return str;
-
-    // 4. Forced KrutiDev Symbols (High Confidence)
-    if (str.startsWith("'") || /[\[\]\\;{}=?+]/.test(str)) {
-      try { return kru2uni(str).trim(); } catch (e) { return str; }
-    }
-
-    const upperStr = str.toUpperCase();
-
-    // 5. Whitelist Check (District names and common WMS words)
-    const isWhitelisted = [...ENGLISH_WHITELIST, "CHHANERA", "KASRAWAD", "DHAMNOD"].some(word => upperStr.includes(word));
-    if (isWhitelisted) return str;
-
-    // 6. Consonant Cluster Check (KrutiDev often has 3+ consonants without vowels)
-    // English words rarely have 4+ consonants in a row (e.g. 'str' is 3, 'rhythm' is 5 but has 'y')
-    const hasWeirdCluster = /[^aeiouy]{4,}/i.test(str);
-
-    // 7. Case & Vowel Analysis
-    const vowels = (str.match(/[aeiou]/gi) || []).length;
-    const ratio = vowels / str.length;
-    const hasHealthyVowels = ratio > 0.25 && str.length > 3;
-    const hasKrutiMarkers = /[\[\]\\;{}=?+¾¼½]/.test(str);
-
-    // English names in these sheets are almost always Proper Case (Indore) or ALL CAPS (INDORE)
-    const isProperCase = /^[A-Z][a-z0-9]+(\s+[A-Z][a-z0-9]+)*$/.test(str);
-    const isAllCaps = /^[A-Z0-9\s,./&()*'#_-]+$/.test(str) && str.length > 2;
-
-    // If it has healthy vowels, no "KrutiDev markers", and NO weird consonant clusters, it's English
-    if ((isProperCase || isAllCaps) && hasHealthyVowels && !hasWeirdCluster && !hasKrutiMarkers) return str;
-    if (isAllCaps && !hasWeirdCluster && !hasKrutiMarkers && str.length > 3) return str;
-
-    // 8. Default to Conversion
-    try {
-      return kru2uni(str).trim();
-    } catch (err) {
-      return str;
-    }
+  const krutiDevMapping = {
+    "ftyk": "जिला",
+    "'kk[kk": "शाखा",
+    "osvjgkml": "वेअरहाउस",
+    ";kstuk": "योजना",
+    ";kstuk nj jkf'k": "योजना दर राशि",
+    "vuqcaf/kr HkaMkj.k {kerk": "अनुबंधित भंडारण क्षमता",
+    "okLrfod HkaMkj.k {kerk": "वास्तविक भंडारण क्षमता",
+    "okLrfod HkaMkj.k": "वास्तविक भंडारण",
+    "vuqca/k fnukad": "अनुबंध दिनांक",
+    "xksnke dzekad": "गोदाम क्रमांक",
+    "Jh": "श्री",
+    ",aM": "एंड",
+    ",M": "एंड",
+    "jke": "राम",
+    "nsokl": "देवास",
+    "xksnke": "गोदाम",
+    "ekrk": "माता",
+    "ckck": "बाबा",
+    "lkbZ": "साईं",
+    "izk-": "प्रा.",
+    "fy-": "लि.",
+    "izk-fy-": "प्रा.लि.",
+    "dksYM": "कोल्ड",
+    "LVksjst": "स्टोरेज",
+    ",xzks": "एग्रो",
+    "xzks": "ग्रो",
+    "d`f\"k": "कृषि",
+    "dsUnz": "केन्द्र",
+    "m|ksx": "उद्योग",
+    "lgdkjh": "सहकारी",
+    "lfefr": "समिति",
+    "e;kZfnr": "मर्यादित",
+    "vkn'kZ": "आदर्श",
+    "foi.ku": "विपणन",
+    "Bank Solvancy dk izek.k i= dh jkf'k": "Bank Solvancy का प्रमाण पत्र की राशि",
+    "Bank Solvancy ds 'kiFk i= dh jkf'k": "Bank Solvancy के शपथ पत्र की राशि",
+    "Bank Solvancy Diduction By Bill": "Bank Solvancy Diduction By Bill",
+    "Balance Amount Bank Solvancy": "Balance Amount Bank Solvancy",
+    "TOTAL EMI": "TOTAL EMI",
+    "EMI Diduction By Bill": "EMI Deduction By Bill",
+    "Balance Amount EMI": "Balance Amount EMI",
+    "Pan Card Holder": "Pan Card Holder",
+    "Pan Card No": "Pan Card No",
+    "'kiFk i=": "शपथ पत्र",
+    "izek.k i=": "प्रमाण पत्र",
+    "'kifk i=": "शपथ पत्र",
+    "izek.k i= ": "प्रमाण पत्र",
+    "izek.k i= 450000": "प्रमाण पत्र 450000",
+    "nsikyqj": "देपालपुर",
+    "bUnkSj": "इन्दौर",
+    "ekWa": "माँ",
+    "jsok": "रेखा",
+    "vUu iw.kkZ": "अन्नपूर्णा",
+    ",e,aM": "एम एंड",
+    "izk fy": "प्रा लि",
+    "osvjgkmflax": "वेयरहाउसिंग",
+    "dkWyst": "कॉलेज",
+    "LVksjsज": "स्टोरेज",
   };
+
+  // const convertHindi = (text, fieldName = "") => {
+  //   if (text === null || text === undefined || text === "") return text;
+  //   if (typeof text === "number") return text;
+
+  //   const str = text.toString().trim();
+
+  //   // 0. Unicode Detection (Skip if already Devnagri)
+  //   if (/[\u0900-\u097F]/.test(str)) return str;
+
+  //   // 1. Dictionary Match (Whole String)
+  //   if (krutiDevMapping[str]) return krutiDevMapping[str];
+
+  //   // 2. STRICT PROTECTED FIELDS
+  //   const PROTECTED_FIELDS = [
+  //     "pan_card_number", "gst_no", "financial_year", "crop_year", "id", "month",
+  //     "district_name", "warehouse_no"
+  //   ];
+  //   if (PROTECTED_FIELDS.includes(fieldName)) return str;
+
+  //   // 3. BASIC FORMAT PROTECTION
+  //   if (str.length <= 1) return str;
+  //   if (!isNaN(str) && !isNaN(parseFloat(str))) return str;
+
+  //   const tokens = str.split(/(\s+)/);
+  //   const convertedTokens = tokens.map(token => {
+  //     if (!token.trim()) return token;
+
+  //     // 1. Dictionary Match (Token Level)
+  //     if (krutiDevMapping[token]) return krutiDevMapping[token];
+
+  //     // 2. Unicode check
+  //     if (/[\u0900-\u097F]/.test(token)) return token;
+
+  //     // 3. PAN check
+  //     if (/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(token.toUpperCase())) return token;
+
+  //     // 4. Skip short initials
+  //     const letters = token.replace(/[^a-zA-Z]/g, '');
+  //     if (letters.length <= 1) return token; 
+
+  //     // 5. Positive KrutiDev Identification (Only convert if we are SURE it is KrutiDev)
+  //     const isKrutiDev = () => {
+  //       // Markers (excluding normal English punctuation like . , - ' ")
+  //       if (/[¼½¾[\]\\;{}=?+¾¼½<>]/.test(token)) return true;
+
+  //       // Middle uppercase (e.g. ekWa)
+  //       if (/[a-z][A-Z]/.test(token)) return true;
+
+  //       // Known KrutiDev clusters impossible/rare in English, plus 'k for 'kk[kk (शाखा)
+  //       if (/(gk|hj|kj|qj|fnO|kfD|Hk|kS|Z|'k)/.test(token)) return true;
+
+  //       // Extremely low vowel ratio
+  //       if (letters.length > 3) {
+  //           const vowels = (letters.match(/[aeiouy]/gi) || []).length;
+  //           if (vowels / letters.length <= 0.15) return true;
+  //       }
+  //       return false;
+  //     };
+
+  //     if (isKrutiDev()) {
+  //        try {
+  //           const converted = kru2uni(token);
+  //           if (/[\u0900-\u097F]/.test(converted)) return converted;
+  //        } catch (err) {
+  //           // ignore and return original token
+  //        }
+  //     }
+
+  //     // Default: KEEP AS ENGLISH! This completely prevents English corruption.
+  //     return token;
+  //   });
+
+  //   return convertedTokens.join("");
+  // };
 
   const formatLocalDate = (d) => {
     const year = d.getFullYear();
@@ -903,14 +1021,487 @@ const PaymentList = () => {
   const getCropYearFromCommodity = (commodity) => {
     if (!commodity) return "";
 
-    const match = commodity.match(/-(\d{2,4})$/); // handle Rice-2023 or moong-24
-    if (!match) return "";
+    // 1. Handle range like "Jowar '2018-2019'" or "2018-19"
+    const rangeMatch = commodity.match(/(\d{4})[-\/\s]+(\d{2,4})/);
+    if (rangeMatch) {
+      const startYr = rangeMatch[1];
+      let endYr = rangeMatch[2];
+      if (endYr.length === 4) endYr = endYr.slice(-2);
+      return `${startYr}-${endYr}`;
+    }
 
-    const yrStr = match[1];
-    const yr = parseInt(yrStr.slice(-2));
-    const fullYear = 2000 + yr;
+    // 2. Handle single year like "Rice-2024" -> "2024-25" or "Rice 24" -> "2024-25"
+    const singleMatch = commodity.match(/(\d{2,4})$/);
+    if (singleMatch) {
+      const yrStr = singleMatch[1];
+      let yr = parseInt(yrStr);
+      if (yrStr.length === 2) {
+        yr = yr < 50 ? 2000 + yr : 1900 + yr;
+      }
+      return `${yr}-${String(yr + 1).slice(-2)}`;
+    }
 
-    return `${fullYear - 1}-${String(fullYear).slice(-2)}`;
+    return "";
+  };
+
+  const KRUTI_PATTERNS = [
+    "vk", "vks", "d`", "iz", "'k", "xz",
+    "gk", "jks", "drk", "oky", "Hkk",
+    "fo", "ns", "ek", "la", "os", "jg",
+    "dk", "ds", "esa", "dks", "HkaMkj",
+    "izk", "fy", "os;j", "gkml",
+    "js", "bU", "ih", "eS", "vU",
+    "vkj", "dkW", "LV", "Mª", "xks",
+    "e/k", "ik", "lk", "uk", "vkW"
+  ];
+
+  // const ENGLISH_WORDS = [
+  //   "warehouse",
+  //   "warehousing",
+  //   "private",
+  //   "limited",
+  //   "ltd",
+  //   "pvt",
+  //   "bank",
+  //   "rice",
+  //   "wheat",
+  //   "branch",
+  //   "district",
+  //   "godown",
+  //   "storage",
+  //   "cold",
+  //   "fort",
+  //   "online",
+  //   "scheme",
+  //   "payment",
+  //   "commodity",
+  //   "finance",
+  //   "insurance",
+  //   "solvancy",
+  //   "emi",
+  //   "amount",
+  //   "bill",
+  //   "deduction",
+  //   "penalty"
+  // ];
+
+  const PROTECTED_FIELDS = [
+    "pan_card_number",
+    "gst_no",
+    "financial_year",
+    "crop_year",
+    "id",
+    "month",
+    "payment_date",
+    "from_date",
+    "to_date",
+    "warehouse_no",
+    "rate",
+    "bill_amount",
+    "tds"
+  ];
+
+  // const cleanCellValue = (value) => {
+  //   if (value === null || value === undefined) {
+  //     return "";
+  //   }
+
+  //   return value
+  //     .toString()
+  //     .replace(/\s+/g, " ")
+  //     .replace(/[\u0000-\u001F]/g, "")
+  //     .trim();
+  // };
+
+  // const isUnicodeHindi = (text) => {
+  //   return /[\u0900-\u097F]/.test(text);
+  // };
+
+  // const isProtectedField = (fieldName) => {
+  //   return PROTECTED_FIELDS.includes(fieldName);
+  // };
+
+  // const isPanNumber = (text) => {
+  //   return /^[A-Z]{5}[0-9]{4}[A-Z]$/i.test(text);
+  // };
+
+  // const isNumeric = (text) => {
+  //   return /^\d+(\.\d+)?$/.test(text);
+  // };
+
+  // const isPureEnglish = (text) => {
+  //   const lower = text.toLowerCase().trim();
+
+  //   // Known English business words
+  //   const matched = ENGLISH_WORDS.filter(word =>
+  //     lower.includes(word)
+  //   ).length;
+
+  //   if (matched > 0) {
+  //     return true;
+  //   }
+
+  //   // Strong KrutiDev indicators
+  //   if (
+  //     /(vk|vks|js|os|iz|fy|gk|ns|bU|d`|xz|jh|dj|dk|ds|Hk|la)/i.test(lower)
+  //   ) {
+  //     return false;
+  //   }
+
+  //   // Looks like real English sentence
+  //   if (/^[a-zA-Z0-9 &().,/\-]+$/.test(text)) {
+  //     const letters = text.replace(/[^a-zA-Z]/g, "");
+
+  //     if (letters.length >= 4) {
+  //       const vowels = (
+  //         letters.match(/[aeiou]/gi) || []
+  //       ).length;
+
+  //       return vowels / letters.length >= 0.28;
+  //     }
+  //   }
+
+  //   return false;
+  // };
+
+  // const getKrutiScore = (text) => {
+  //   let score = 0;
+
+  //   KRUTI_PATTERNS.forEach(pattern => {
+  //     if (text.includes(pattern)) {
+  //       score += 2;
+  //     }
+  //   });
+
+  //   if (/[¼½¾]/.test(text)) {
+  //     score += 5;
+  //   }
+
+  //   if ((text.match(/;/g) || []).length >= 1) {
+  //     score += 2;
+  //   }
+
+  //   if (/[\\']/g.test(text)) {
+  //     score += 2;
+  //   }
+
+  //   if (/(kS|ks|kj|jh|gk|vk|ns|xz|iz)/.test(text)) {
+  //     score += 2;
+  //   }
+
+  //   return score;
+  // };
+
+  // const isValidHindiConversion = (text) => {
+  //   const hindiChars = (
+  //     text.match(/[\u0900-\u097F]/g) || []
+  //   ).length;
+
+  //   return hindiChars >= 2;
+  // };
+
+  // const convertKrutiChunk = (text) => {
+  //   try {
+  //     const converted = kru2uni(text);
+
+  //     if (isValidHindiConversion(converted)) {
+  //       return converted;
+  //     }
+
+  //     return text;
+  //   } catch (err) {
+  //     return text;
+  //   }
+  // };
+
+  // const processMixedText = (text) => {
+  //   if (!text) return text;
+
+  //   // Already Hindi
+  //   if (isUnicodeHindi(text)) {
+  //     return text;
+  //   }
+
+  //   // Dictionary exact match
+  //   if (krutiDevMapping[text]) {
+  //     return krutiDevMapping[text];
+  //   }
+
+  //   // Pure English
+  //   if (isPureEnglish(text)) {
+  //     return text;
+  //   }
+
+  //   // PAN
+  //   if (isPanNumber(text)) {
+  //     return text;
+  //   }
+
+  //   // Numeric
+  //   if (isNumeric(text)) {
+  //     return text;
+  //   }
+
+  //   // Direct conversion attempt
+  //   const converted = convertKrutiChunk(text);
+
+  //   if (
+  //     converted !== text &&
+  //     isValidHindiConversion(converted)
+  //   ) {
+  //     return converted;
+  //   }
+
+  //   return text;
+  // };
+
+  // const ONLY_KRUTI_FIELDS = [
+  //   "branch_name",
+  //   "warehouse_name"
+  // ];
+
+  // const isValidHindiOutput = (text) => {
+
+  //   if (!text) return false;
+
+  //   const hindiChars =
+  //     (text.match(/[\u0900-\u097F]/g) || []).length;
+
+  //   return hindiChars >= 2;
+  // };
+
+  const STRICT_KRUTI_PATTERNS = [
+    "vk",
+    "vks",
+    "js",
+    "jks",
+    "iz",
+    "'k",
+    "d`",
+    "xz",
+    "gk",
+    "ns",
+    "la",
+    "os",
+    "Hk",
+    "dk",
+    "ds",
+    "esa",
+    "dks",
+    "fj",
+    "f'k",
+    "Qk",
+    "xz",
+    "Vª",
+    "Mª",
+    "ks",
+    "kS",
+    "jh",
+    "dj",
+    "dh",
+    "ls",
+    "es"
+  ];
+
+  const getKrutiScore = (text) => {
+
+    const lower = text.toLowerCase();
+
+    let score = 0;
+
+    STRICT_KRUTI_PATTERNS.forEach(pattern => {
+
+      if (lower.includes(pattern)) {
+        score += 2;
+      }
+
+    });
+
+    // Strong indicators
+    if (/[¼½¾]/.test(text)) {
+      score += 5;
+    }
+
+    if (/[;\\']/.test(text)) {
+      score += 2;
+    }
+
+    // Impossible English clusters
+    if (
+      /(osvj|jgk|xzks|ekwa|jsok|dey|iqj|Hkk)/i.test(text)
+    ) {
+      score += 4;
+    }
+
+    // Low vowel suspicious text
+    const letters =
+      text.replace(/[^a-z]/gi, "");
+
+    if (letters.length >= 6) {
+
+      const vowels =
+        (letters.match(/[aeiou]/gi) || []).length;
+
+      const ratio = vowels / letters.length;
+
+      if (ratio < 0.22) {
+        score += 2;
+      }
+    }
+
+    return score;
+  };
+
+  const ENGLISH_BUSINESS_WORDS = [
+    "warehouse",
+    "warehousing",
+    "private",
+    "limited",
+    "pvt",
+    "ltd",
+    "bank",
+    "rice",
+    "wheat",
+    "storage",
+    "cold",
+    "india",
+    "traders",
+    "company",
+    "corporation",
+    "agro",
+    "industries",
+    "godown",
+    "enterprise",
+    "associates"
+  ];
+
+  const getEnglishScore = (text) => {
+
+    const lower = text.toLowerCase();
+
+    let score = 0;
+
+    // Business keywords
+    ENGLISH_BUSINESS_WORDS.forEach(word => {
+      if (lower.includes(word)) {
+        score += 4;
+      }
+    });
+
+    // Fully readable English chars
+    if (/^[a-zA-Z0-9 &().,/-]+$/.test(text)) {
+      score += 2;
+    }
+
+    const words = text.split(/\s+/);
+
+    words.forEach(word => {
+
+      const clean = word.replace(/[^a-z]/gi, "");
+
+      if (clean.length >= 3) {
+
+        const vowels =
+          (clean.match(/[aeiou]/gi) || []).length;
+
+        const ratio = vowels / clean.length;
+
+        if (ratio >= 0.25) {
+          score += 1;
+        }
+      }
+    });
+
+    return score;
+  };
+
+  const smartConvertHindi = (
+    value,
+    fieldName = ""
+  ) => {
+
+    if (
+      value === null ||
+      value === undefined
+    ) {
+      return "";
+    }
+
+    const str = value.toString().trim();
+
+    if (!str) {
+      return "";
+    }
+
+    // Already Hindi
+    if (/[\u0900-\u097F]/.test(str)) {
+      return str;
+    }
+
+    // Protected fields
+    if (PROTECTED_FIELDS.includes(fieldName)) {
+      return str;
+    }
+
+    // PAN safe
+    if (/^[A-Z]{5}[0-9]{4}[A-Z]$/i.test(str)) {
+      return str;
+    }
+
+    // Only convert target fields
+    if (
+      fieldName !== "branch_name" &&
+      fieldName !== "warehouse_name"
+    ) {
+      return str;
+    }
+
+    // Exact dictionary
+    if (krutiDevMapping[str]) {
+      return krutiDevMapping[str];
+    }
+
+    const englishScore =
+      getEnglishScore(str);
+
+    const krutiScore =
+      getKrutiScore(str);
+
+    // Strong English → KEEP
+    if (
+      englishScore >= 6 &&
+      englishScore > krutiScore
+    ) {
+      return str;
+    }
+
+    // Weak Kruti → KEEP
+    if (krutiScore < 4) {
+      return str;
+    }
+
+    try {
+
+      const converted = kru2uni(str);
+
+      // Conversion validation
+      const hindiChars =
+        (
+          converted.match(/[\u0900-\u097F]/g)
+          || []
+        ).length;
+
+      if (hindiChars >= 2) {
+        return converted;
+      }
+
+      return str;
+
+    } catch {
+
+      return str;
+
+    }
   };
 
   const processSheetData = async (sheetName, wb) => {
@@ -927,7 +1518,36 @@ const PaymentList = () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       const sheet = wb.Sheets[sheetName];
-      
+
+      console.log("========== FONT DEBUG START ==========");
+
+      Object.keys(sheet).forEach((cellAddress) => {
+
+        // Skip metadata keys like !ref
+        if (cellAddress.startsWith("!")) return;
+
+        const cell = sheet[cellAddress];
+
+        const value = cell.v;
+
+        // Font info
+        const fontName = cell?.s?.font?.name || "NO_FONT_FOUND";
+
+        // Only log text cells
+        if (typeof value === "string" && value.trim() !== "") {
+
+          console.log({
+            cell: cellAddress,
+            value: value,
+            font: fontName,
+            style: cell.s,
+          });
+
+        }
+      });
+
+      console.log("========== FONT DEBUG END ==========");
+
       // DEFENSIVE RANGE DETECTION (Fixes "ghost" rows/columns in sparse sheets)
       const ref = XLSX.utils.decode_range(sheet['!ref'] || "A1:A1");
       let lastRow = ref.s.r;
@@ -935,10 +1555,10 @@ const PaymentList = () => {
 
       for (let r = ref.e.r; r >= ref.s.r; r--) {
         for (let c = ref.e.c; c >= ref.s.c; c--) {
-          if (sheet[XLSX.utils.encode_cell({r, c})]) {
+          if (sheet[XLSX.utils.encode_cell({ r, c })]) {
             if (r > lastRow) lastRow = r;
             if (c > lastCol) lastCol = c;
-            break; 
+            break;
           }
         }
         if (lastRow > ref.s.r && r < lastRow - 100) break; // Optimization: stop if we found data and then 100 empty rows
@@ -946,9 +1566,9 @@ const PaymentList = () => {
       sheet['!ref'] = XLSX.utils.encode_range({ s: ref.s, e: { r: lastRow, c: lastCol } });
 
       const jsonDataRaw = XLSX.utils.sheet_to_json(sheet, {
-        range: 3, 
-        raw: false,
-        defval: "", 
+        range: 3,
+        raw: true,
+        defval: "",
       });
 
       // FILTER OUT EMPTY OR HEADER ROWS
@@ -1005,6 +1625,11 @@ const PaymentList = () => {
         remarks: "remarks",
         amount_deducted_against_gain: "amount_deducted_against_gain_loss",
         "20_deduction_amount_against_gain": "deduction_20_percent",
+        "crop_year": "crop_year",
+        "commodity": "commodity",
+        "cropyear": "crop_year",
+        "commodity_name": "commodity",
+        "month": "month",
       };
 
       const normalizeKeys = (row) => {
@@ -1021,22 +1646,54 @@ const PaymentList = () => {
 
       setImportProgress(60);
       setImportStatus("Formatting data chunks...");
-      
+
+      const cleanCellValue = (value) => {
+        if (value === null || value === undefined) {
+          return "";
+        }
+
+        return value
+          .toString()
+          .replace(/\s+/g, " ")
+          .replace(/[\u0000-\u001F]/g, "")
+          .trim();
+      };
+
       const formattedData = [];
       const CHUNK_SIZE = 500;
       for (let i = 0; i < jsonData.length; i += CHUNK_SIZE) {
         const chunk = jsonData.slice(i, i + CHUNK_SIZE);
         const processedChunk = chunk.map((row) => {
           const normalizedRow = normalizeKeys(row);
+          Object.keys(normalizedRow).forEach(key => {
+            normalizedRow[key] = cleanCellValue(normalizedRow[key]);
+          });
           const periodData = processPeriod(normalizedRow.period);
+
+          let financial_year = normalizedRow.financial_year || periodData.financial_year || "";
+          const payment_date = formatExcelDate(normalizedRow.payment_date);
+
+          if (payment_date && !financial_year) {
+            const pd = new Date(payment_date);
+            if (!isNaN(pd)) {
+              const pMonth = pd.getMonth(); // 0-11
+              const pYear = pd.getFullYear();
+              if (pMonth >= 3) { // April or later
+                financial_year = `${pYear}-${String(pYear + 1).slice(-2)}`;
+              } else {
+                financial_year = `${pYear - 1}-${String(pYear).slice(-2)}`;
+              }
+            }
+          }
+
           return {
             ...normalizedRow,
             from_date: periodData.from_date || null,
             to_date: periodData.to_date || null,
-            month: periodData.month || "",
-            financial_year: periodData.financial_year || "",
+            month: normalizedRow.month || periodData.month || "",
+            financial_year,
             crop_year: normalizedRow.crop_year || getCropYearFromCommodity(normalizedRow.commodity) || "",
-            payment_date: formatExcelDate(normalizedRow.payment_date),
+            payment_date,
           };
         });
         formattedData.push(...processedChunk);
@@ -1051,9 +1708,15 @@ const PaymentList = () => {
         const chunk = formattedData.slice(i, i + CHUNK_SIZE);
         const processedChunk = chunk.map((row) => ({
           ...row,
-          branch_name: convertHindi(row.branch_name, "branch_name"),
-          warehouse_name: convertHindi(row.warehouse_name, "warehouse_name"),
-          district_name: row.district_name,
+          branch_name: smartConvertHindi(
+            row.branch_name,
+            "branch_name"
+          ),
+
+          warehouse_name: smartConvertHindi(
+            row.warehouse_name,
+            "warehouse_name"
+          ),
         }));
         finalData.push(...processedChunk);
         setImportProgress(85 + Math.round((i / formattedData.length) * 10));
@@ -1114,19 +1777,22 @@ const PaymentList = () => {
     reader.onload = (evt) => {
       setImportStatus("Parsing workbook...");
       setImportProgress(25);
-      
+
       // Delay to allow "Parsing workbook..." to show
       setTimeout(async () => {
         try {
-          const data = new Uint8Array(evt.target.result);
-          const wb = XLSX.read(data, { type: "array" });
+          const data = new Uint8Array(evt.target.result)
+          const wb = XLSX.read(data, {
+            type: "array",
+            cellStyles: true
+          });
           setWorkbook(wb);
           setAvailableSheets(wb.SheetNames);
 
           const firstSheet = wb.SheetNames[0];
           setSelectedSheet(firstSheet);
           setImportProgress(30);
-          
+
           // Delay to show 30%
           setTimeout(async () => {
             await processSheetData(firstSheet, wb);
@@ -1161,12 +1827,19 @@ const PaymentList = () => {
       }, {
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            const percentCompleted = Math.min(Math.round((progressEvent.loaded * 100) / progressEvent.total), 99);
             setImportProgress(percentCompleted);
             setImportLoadedSize((progressEvent.loaded / (1024 * 1024)).toFixed(2));
+            setImportFileInfo(prev => ({ ...prev, size: (progressEvent.total / (1024 * 1024)).toFixed(2) }));
+
+            if (percentCompleted >= 99) {
+              setImportStatus("Processing on server...");
+            }
           }
         }
       });
+
+      setImportProgress(100);
 
       toast.success(res.data.message || "Payment imported successfully!");
 
@@ -1196,12 +1869,38 @@ const PaymentList = () => {
       .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
-  const previewColumns = Object.keys(previewData[0] || {})
-    .filter((key) => key !== "id" && key !== "cropData")
-    .map((key) => ({
-      key,
-      label: fieldLabels[key] || toTitleCase(key),
-    }));
+  const requestedKeys = [
+    "bill_type", "district_name", "branch_name", "warehouse_name",
+    "pan_card_holder", "pan_card_number", "warehouse_no", "depositers_name",
+    "commodity", "crop_year", "financial_year", "month",
+    "bill_amount", "total_jv_amount", "actual_passed_amount", "tds",
+    "emi_amount", "deduction_20_percent", "penalty", "medicine",
+    "emi_fdr_interest", "gain_shortage_deduction", "stock_shortage_deduction",
+    "bank_solvancy", "insurance", "other_deduction_amount", "other_deductions_reason",
+    "pay_to_jvs_amount", "payment_by", "payment_date", "qtr", "remarks"
+  ];
+
+  let previewColumnsKeys = requestedKeys.filter(key => {
+    // Critical fields to always show in import preview
+    if (["commodity", "crop_year"].includes(key)) return true;
+
+    // Only show if data exists for this key in the preview
+    return previewData.some(row => row[key] !== undefined && row[key] !== null && row[key] !== "");
+  });
+
+  // If no data yet, show all requested keys
+  if (previewColumnsKeys.length === 0) {
+    previewColumnsKeys = requestedKeys;
+  }
+
+  // Add Sr No at the beginning
+  previewColumnsKeys = ["sr_no", ...previewColumnsKeys];
+
+  const previewColumns = previewColumnsKeys.map((key) => ({
+    key,
+    label: key === "sr_no" ? "Sr No" : (fieldLabels[key] || toTitleCase(key)),
+    render: key === "sr_no" ? (v, r, idx) => (previewPage - 1) * previewLimit + idx + 1 : undefined
+  }));
 
   return (
     <div className="space-y-6">
@@ -1286,7 +1985,7 @@ const PaymentList = () => {
                   <div className="space-y-1">
                     <p className="text-sm font-semibold text-slate-700">{importStatus}</p>
                     <p className="text-xs text-slate-500">
-                      {importStatus.includes("Uploading") 
+                      {importStatus.includes("Uploading")
                         ? `${importLoadedSize} MB of ${importFileInfo.size} MB`
                         : "Preparing data..."}
                     </p>
@@ -1298,7 +1997,7 @@ const PaymentList = () => {
 
                 {/* Progress Bar Container */}
                 <div className="h-4 w-full bg-slate-200 rounded-full overflow-hidden border border-slate-300 shadow-inner">
-                  <div 
+                  <div
                     className="h-full bg-blue-600 transition-all duration-500 ease-out relative"
                     style={{ width: `${importProgress}%` }}
                   >
@@ -1315,7 +2014,8 @@ const PaymentList = () => {
             </div>
           </div>
 
-          <style dangerouslySetInnerHTML={{ __html: `
+          <style dangerouslySetInnerHTML={{
+            __html: `
             @keyframes shimmer {
               0% { transform: translateX(-100%); }
               100% { transform: translateX(100%); }
@@ -1547,66 +2247,13 @@ const PaymentList = () => {
           <Table columns={previewColumns} data={fullData.slice((previewPage - 1) * previewLimit, previewPage * previewLimit)} />
 
           {previewTotalPages > 1 && (
-            <div className="mt-4 flex flex-col md:flex-row items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200 gap-4">
-              <span className="text-sm font-semibold text-slate-700">
-                Showing {(previewPage - 1) * previewLimit + 1} to {Math.min(previewPage * previewLimit, fullData.length)} of <span className="text-blue-600">{fullData.length}</span> records
-              </span>
-
-              <div className="flex items-center gap-1 overflow-x-auto max-w-full pb-1">
-                <button
-                  disabled={previewPage === 1}
-                  onClick={() => setPreviewPage(1)}
-                  className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
-                >
-                  First
-                </button>
-
-                <button
-                  disabled={previewPage === 1}
-                  onClick={() => setPreviewPage(prev => prev - 1)}
-                  className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30 mr-2"
-                >
-                  Prev
-                </button>
-
-                {/* Numbered pagination with dots */}
-                {[...Array(previewTotalPages)].map((_, i) => {
-                  const p = i + 1;
-                  // Show first, last, current, and pages around current
-                  if (p === 1 || p === previewTotalPages || (p >= previewPage - 2 && p <= previewPage + 2)) {
-                    return (
-                      <button
-                        key={p}
-                        onClick={() => setPreviewPage(p)}
-                        className={`min-w-[32px] px-2 py-1 text-xs border rounded transition ${previewPage === p ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 hover:bg-slate-100 border-slate-300"
-                          }`}
-                      >
-                        {p}
-                      </button>
-                    );
-                  }
-                  if (p === 2 && previewPage > 4) return <span key="dots1" className="px-1 text-slate-400">...</span>;
-                  if (p === previewTotalPages - 1 && previewPage < previewTotalPages - 3) return <span key="dots2" className="px-1 text-slate-400">...</span>;
-                  return null;
-                })}
-
-                <button
-                  disabled={previewPage === previewTotalPages}
-                  onClick={() => setPreviewPage(prev => prev + 1)}
-                  className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30 ml-2"
-                >
-                  Next
-                </button>
-
-                <button
-                  disabled={previewPage === previewTotalPages}
-                  onClick={() => setPreviewPage(previewTotalPages)}
-                  className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
-                >
-                  Last
-                </button>
-              </div>
-            </div>
+            <Pagination
+              currentPage={previewPage}
+              totalPages={previewTotalPages}
+              totalRecords={fullData.length}
+              limit={previewLimit}
+              onPageChange={setPreviewPage}
+            />
           )}
 
           <div className="mt-4 flex gap-2">
@@ -1652,12 +2299,14 @@ const PaymentList = () => {
           </div>
         ) : (
           <>
-            <Table columns={columns} data={items} />
+            <Table columns={columns} data={items} stickyActions={true} />
             {totalPages > 1 && (
-              <div className="mt-6 flex justify-center">
+              <div className="mt-6">
                 <Pagination
                   currentPage={page}
                   totalPages={totalPages}
+                  totalRecords={total}
+                  limit={limit}
                   onPageChange={(newPage) => dispatch(setPage(newPage))}
                 />
               </div>

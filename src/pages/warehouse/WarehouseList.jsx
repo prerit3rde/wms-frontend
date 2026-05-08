@@ -27,6 +27,7 @@ const WarehouseList = () => {
     limit,
     loading,
     error,
+    total,
   } = useSelector((state) => state.warehouse);
 
   /* ===============================
@@ -777,64 +778,13 @@ const WarehouseList = () => {
           />
 
           {previewTotalPages > 1 && (
-            <div className="mt-4 flex flex-col md:flex-row items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200 gap-4">
-              <span className="text-sm font-semibold text-slate-700">
-                Showing {(previewPage - 1) * previewLimit + 1} to {Math.min(previewPage * previewLimit, previewData.length)} of <span className="text-blue-600">{previewData.length}</span> records
-              </span>
-
-              <div className="flex items-center gap-1 overflow-x-auto max-w-full pb-1">
-                <button
-                  disabled={previewPage === 1}
-                  onClick={() => setPreviewPage(1)}
-                  className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
-                >
-                  First
-                </button>
-
-                <button
-                  disabled={previewPage === 1}
-                  onClick={() => setPreviewPage(prev => prev - 1)}
-                  className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30 mr-2"
-                >
-                  Prev
-                </button>
-
-                {[...Array(previewTotalPages)].map((_, i) => {
-                  const p = i + 1;
-                  if (p === 1 || p === previewTotalPages || (p >= previewPage - 2 && p <= previewPage + 2)) {
-                    return (
-                      <button
-                        key={p}
-                        onClick={() => setPreviewPage(p)}
-                        className={`min-w-[32px] px-2 py-1 text-xs border rounded transition ${previewPage === p ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 hover:bg-slate-100 border-slate-300"
-                          }`}
-                      >
-                        {p}
-                      </button>
-                    );
-                  }
-                  if (p === 2 && previewPage > 4) return <span key="dots1" className="px-1 text-slate-400">...</span>;
-                  if (p === previewTotalPages - 1 && previewPage < previewTotalPages - 3) return <span key="dots2" className="px-1 text-slate-400">...</span>;
-                  return null;
-                })}
-
-                <button
-                  disabled={previewPage === previewTotalPages}
-                  onClick={() => setPreviewPage(prev => prev + 1)}
-                  className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30 ml-2"
-                >
-                  Next
-                </button>
-
-                <button
-                  disabled={previewPage === previewTotalPages}
-                  onClick={() => setPreviewPage(previewTotalPages)}
-                  className="px-2 py-1 text-xs bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
-                >
-                  Last
-                </button>
-              </div>
-            </div>
+            <Pagination
+              currentPage={previewPage}
+              totalPages={previewTotalPages}
+              totalRecords={previewData.length}
+              limit={previewLimit}
+              onPageChange={setPreviewPage}
+            />
           )}
 
           <div className="mt-6 flex gap-3">
@@ -1048,12 +998,14 @@ const WarehouseList = () => {
           </div>
         ) : (
           <>
-            <Table columns={columns} data={warehouses} />
+            <Table columns={columns} data={warehouses} stickyActions={true} />
             {totalPages > 1 && (
-              <div className="mt-6 flex justify-center">
+              <div className="mt-6">
                 <Pagination
                   currentPage={page}
                   totalPages={totalPages}
+                  totalRecords={total}
+                  limit={limit}
                   onPageChange={(newPage) => dispatch(setPage(newPage))}
                 />
               </div>

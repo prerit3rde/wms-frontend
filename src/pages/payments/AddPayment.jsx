@@ -229,31 +229,31 @@ const AddPayment = () => {
     const billAmount = Number(formData.bill_amount || 0);
     const totalJVAmount = Number(formData.total_jv_amount || 0);
 
-    const calculatedTDS = totalJVAmount * 0.1;
+    const calculatedTDS = Math.round(totalJVAmount * 0.1);
     const finalTDS = isTdsEdited
-      ? Number(formData.tds || 0)
+      ? Math.round(Number(formData.tds || 0))
       : calculatedTDS;
 
-    const calculated20 = totalJVAmount * 0.2;
+    const calculated20 = Math.round(totalJVAmount * 0.2);
     const final20 = isDeduction20Edited
-      ? Number(formData.deduction_20_percent || 0)
+      ? Math.round(Number(formData.deduction_20_percent || 0))
       : calculated20;
 
     const totalDeductions =
       finalTDS +
-      Number(formData.amount_deducted_against_gain_loss || 0) +
-      Number(formData.emi_amount || 0) +
+      Math.round(Number(formData.amount_deducted_against_gain_loss || 0)) +
+      Math.round(Number(formData.emi_amount || 0)) +
       final20 +
-      Number(formData.penalty || 0) +
-      Number(formData.medicine || 0) +
-      Number(formData.emi_fdr_interest || 0) +
-      Number(formData.gain_shortage_deduction || 0) +
-      Number(formData.stock_shortage_deduction || 0) +
+      Math.round(Number(formData.penalty || 0)) +
+      Math.round(Number(formData.medicine || 0)) +
+      Math.round(Number(formData.emi_fdr_interest || 0)) +
+      Math.round(Number(formData.gain_shortage_deduction || 0)) +
+      Math.round(Number(formData.stock_shortage_deduction || 0)) +
       (formData.bank_solvancy === "Certificate"
         ? 0
-        : Number(formData.bank_solvancy || 0)) +
-      Number(formData.insurance || 0) +
-      Number(formData.other_deduction_amount || 0);
+        : Math.round(Number(formData.bank_solvancy || 0))) +
+      Math.round(Number(formData.insurance || 0)) +
+      Math.round(Number(formData.other_deduction_amount || 0));
 
     const payToJVS = totalJVAmount - totalDeductions;
 
@@ -268,8 +268,8 @@ const AddPayment = () => {
       ...prev,
 
       // ✅ ALWAYS UPDATE if NOT edited
-      tds: isTdsEdited ? prev.tds : calculatedTDS.toFixed(2),
-      deduction_20_percent: isDeduction20Edited ? prev.deduction_20_percent : calculated20.toFixed(2),
+      tds: isTdsEdited ? prev.tds : calculatedTDS.toString(),
+      deduction_20_percent: isDeduction20Edited ? prev.deduction_20_percent : calculated20.toString(),
 
       actual_passed_amount: totalJVAmount.toFixed(2),
       pay_to_jvs_amount: payToJVS.toFixed(2),
@@ -517,25 +517,25 @@ const AddPayment = () => {
         ),
 
         /* DEDUCTIONS */
-        tds: Number(formData.tds || 0),
-        amount_deducted_against_gain_loss: Number(
+        tds: Math.round(Number(formData.tds || 0)),
+        amount_deducted_against_gain_loss: Math.round(Number(
           formData.amount_deducted_against_gain_loss || 0,
-        ),
-        emi_amount: Number(formData.emi_amount || 0),
-        deduction_20_percent: Number(formData.deduction_20_percent || 0),
-        penalty: Number(formData.penalty || 0),
-        medicine: Number(formData.medicine || 0),
-        emi_fdr_interest: Number(formData.emi_fdr_interest || 0),
-        gain_shortage_deduction: Number(formData.gain_shortage_deduction || 0),
-        stock_shortage_deduction: Number(
+        )),
+        emi_amount: Math.round(Number(formData.emi_amount || 0)),
+        deduction_20_percent: Math.round(Number(formData.deduction_20_percent || 0)),
+        penalty: Math.round(Number(formData.penalty || 0)),
+        medicine: Math.round(Number(formData.medicine || 0)),
+        emi_fdr_interest: Math.round(Number(formData.emi_fdr_interest || 0)),
+        gain_shortage_deduction: Math.round(Number(formData.gain_shortage_deduction || 0)),
+        stock_shortage_deduction: Math.round(Number(
           formData.stock_shortage_deduction || 0,
-        ),
+        )),
         bank_solvancy:
           formData.bank_solvancy === "Certificate"
             ? 0
-            : Number(formData.bank_solvancy || 0),
-        insurance: Number(formData.insurance || 0),
-        other_deduction_amount: Number(formData.other_deduction_amount || 0),
+            : Math.round(Number(formData.bank_solvancy || 0)),
+        insurance: Math.round(Number(formData.insurance || 0)),
+        other_deduction_amount: Math.round(Number(formData.other_deduction_amount || 0)),
 
         /* SECURITY */
         security_fund_amount: Number(formData.security_fund_amount || 0),
