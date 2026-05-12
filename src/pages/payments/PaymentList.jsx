@@ -1504,6 +1504,88 @@ const PaymentList = () => {
     }
   };
 
+  const convertBranchName = (value) => {
+
+    if (
+      value === null ||
+      value === undefined
+    ) {
+      return "";
+    }
+
+    const str = value.toString().trim();
+
+    if (!str) {
+      return "";
+    }
+
+    // Already Hindi
+    if (/[\u0900-\u097F]/.test(str)) {
+      return str;
+    }
+
+    // Exact mapping
+    if (krutiDevMapping[str]) {
+      return krutiDevMapping[str];
+    }
+
+    // PAN safe
+    if (/^[A-Z]{5}[0-9]{4}[A-Z]$/i.test(str)) {
+      return str;
+    }
+
+    // Numeric safe
+    if (/^\d+(\.\d+)?$/.test(str)) {
+      return str;
+    }
+
+    // Strong English detection
+    const englishScore =
+      getEnglishScore(str);
+
+    const krutiScore =
+      getKrutiScore(str);
+
+    // PURE ENGLISH → NEVER CONVERT
+    if (
+      /^[a-zA-Z\s.&()-]+$/.test(str) &&
+      englishScore >= krutiScore
+    ) {
+      return str;
+    }
+
+    // Convert ONLY if strong KrutiDev indicators exist
+    const shouldConvert =
+      krutiScore >= 4;
+
+    if (!shouldConvert) {
+      return str;
+    }
+
+    try {
+
+      const converted = kru2uni(str);
+
+      const hindiChars =
+        (
+          converted.match(/[\u0900-\u097F]/g)
+          || []
+        ).length;
+
+      // Valid Hindi conversion
+      if (hindiChars >= 2) {
+        return converted;
+      }
+
+      return str;
+
+    } catch {
+
+      return str;
+
+    }
+  };
+
   const processSheetData = async (sheetName, wb) => {
     try {
       setLoadingImport(true);
